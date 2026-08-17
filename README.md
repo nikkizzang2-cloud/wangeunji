@@ -1,36 +1,31 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# eunji
 
-## Getting Started
+상업용 가구 작업물 아카이빙 웹사이트
 
-First, run the development server:
+## 소개
+
+작가의 상업용 가구 작업물을 아카이빙하는 정적 웹사이트입니다. 사용자 데이터나 서버 로직 없이, 이미지와 텍스트 콘텐츠를 정적으로 제공합니다. 디자인은 별도 Figma 작업물을 그대로 연동할 예정이며, 현재는 라우팅·기능 구조 위주로 구현되어 있습니다.
+
+## 기술 스택
+
+- Next.js (App Router) + TypeScript
+- Tailwind CSS
+- Vercel (배포)
+
+## 페이지 구조
+
+- `/intro` — 공통 인트로 페이지
+- `/main` — 약 60개 작업물 이미지를 비정형 배치로 보여주는 메인 페이지
+- `/caption/[slug]` — 작품 개별 설명 페이지 (20개)
+- `/info` — 작가 및 작업물 공통 정보 페이지
+
+루트(`/`) 접속 시 `/intro`로 자동 연결됩니다.
+
+## 개발 환경
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+[http://localhost:3000](http://localhost:3000) 에서 확인할 수 있습니다.
