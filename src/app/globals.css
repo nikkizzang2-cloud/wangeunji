@@ -8,8 +8,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-helvetica);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -22,5 +21,32 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Helvetica, Arial, sans-serif;
+}
+
+/*
+ * Figma frame-accurate positioning.
+ *
+ * Elements carry `--fx` / `--fy` / `--fw` custom properties computed from the
+ * Figma frame's raw x/y/width (see get_metadata) — `--fx`/`--fw` as a
+ * percentage of the frame width (so they scale with viewport width) and
+ * `--fy` as a fixed px offset (page height is content-driven, not scaled).
+ * Below the design's reference breakpoint, elements stay in normal document
+ * flow (position: static) since no mobile design exists yet.
+ *
+ * Usage: className="figma-pin ..." style={geom(x, y, w?)} — see
+ * src/lib/figma-layout.ts for the `geom` helper. Documented in CLAUDE.md
+ * under "Figma 연동".
+ */
+.figma-pin {
+  position: static;
+}
+
+@media (min-width: 1024px) {
+  .figma-pin {
+    position: absolute;
+    left: var(--fx);
+    top: var(--fy);
+    width: var(--fw, auto);
+  }
 }

@@ -1,16 +1,15 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import TopBar from "@/components/TopBar";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const helvetica = localFont({
+  src: [
+    { path: "../fonts/Helvetica.ttf", weight: "400", style: "normal" },
+    { path: "../fonts/Helvetica-Bold.ttf", weight: "700", style: "normal" },
+  ],
+  variable: "--font-helvetica",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -20,10 +19,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="ko"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
+    <html lang="ko" className={`${helvetica.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <TopBar />
         {children}
