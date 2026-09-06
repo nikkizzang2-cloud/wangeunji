@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import type { Work } from "@/data/works";
+import type { CaptionWork } from "@/data/works";
 
 // TODO: 실제 좌/우 이미지 스택 개수·이미지는 Figma 디자인 연동 시 교체 예정.
 const PLACEHOLDER_STACK_SIZE = 3;
 
 type CaptionCarouselProps = {
-  work: Work;
+  work: CaptionWork;
 };
 
 export default function CaptionCarousel({ work }: CaptionCarouselProps) {

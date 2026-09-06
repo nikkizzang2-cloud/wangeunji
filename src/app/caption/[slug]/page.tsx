@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import CaptionCarousel from "@/components/CaptionCarousel";
-import { getAllCaptionSlugs, getWorkBySlug } from "@/data/works";
+import { getAllCaptionSlugs, getCaptionBySlug } from "@/data/works";
 
 export function generateStaticParams() {
   return getAllCaptionSlugs().map((slug) => ({ slug }));
@@ -12,11 +12,11 @@ type CaptionPageProps = {
 
 export default async function CaptionPage({ params }: CaptionPageProps) {
   const { slug } = await params;
-  const work = getWorkBySlug(slug);
+  const caption = getCaptionBySlug(slug);
 
-  if (!work) {
+  if (!caption) {
     notFound();
   }
 
-  return <CaptionCarousel work={work} />;
+  return <CaptionCarousel work={caption} />;
 }

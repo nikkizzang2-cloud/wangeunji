@@ -1,5 +1,5 @@
-import MainGallery from "@/components/MainGallery";
+import { redirect } from "next/navigation";
 
 export default function MainPage() {
-  return <MainGallery />;
+  redirect("/main/parts");
 }

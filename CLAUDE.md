@@ -24,9 +24,11 @@
 | 라우트 | 설명 | 페이지 수 |
 |---|---|---|
 | `/intro` | 루트 도메인 접속 시 자동 연결되는 공통 인트로 | 1 |
-| `/main` | 60개 아카이빙 이미지를 비정형 크기/배치로 노출하는 메인 화면 | 1 |
-| `/caption/[slug]` | 60개 중 20개 이미지에 연결된 작품 개별 설명 페이지 | 20 |
-| `/info` | `/main` 상단 Info 버튼으로 접근하는 작가·작업물 공통 정보 페이지 | 1 |
+| `/main` | `/main/parts`로 리다이렉트 | - |
+| `/main/parts` | parts 이미지 53개 그리드 (Figma 연동 완료) | 1 |
+| `/main/furniture` | furniture 이미지 17개 그리드 (Figma 미연동) | 1 |
+| `/caption/[slug]` | parts/furniture가 공유하는 개별 작품 설명 페이지 | 17 |
+| `/info` | `/main` 상단 Info 버튼으로 접근하는 작가·작업물 공통 정보 페이지 (Figma 연동 완료) | 1 |
 
 루트(`/`)는 `/intro`로 리다이렉트한다.
 
@@ -35,35 +37,47 @@
 ### 공통 (모든 페이지)
 
 - 상단바(TopBar)가 모든 화면에 공통으로 존재한다.
-  - **Wang eun ji**: 클릭 시 `/main`으로 라우팅
-  - **About**: 클릭 시 팝업창 표시 (내용/디자인은 추후 전달 예정, 현재는 빈 모달만 존재)
-  - **Info**: 클릭 시 `/info`로 라우팅
-  - **Contact**: 클릭 시 `mailto:` 링크로 메일 작성 창 실행. 수신 주소는 `src/lib/constants.ts`의 `CONTACT_EMAIL` 상수로 관리 (현재 플레이스홀더, 확정 시 교체)
+  - **Wang eun ji**: 클릭 시 `/intro`로 라우팅
+  - **home**: 클릭 시 `/main/parts`로 라우팅. 기존 About 팝업은 `/main` Figma 연동 시 이 버튼으로 대체되어 제거됨
+  - **info**: 클릭 시 `/info`로 라우팅
+  - **contact**: 클릭 시 `mailto:` 링크로 메일 작성 창 실행. 수신 주소는 `src/lib/constants.ts`의 `CONTACT_EMAIL` 상수로 관리 (현재 플레이스홀더, 확정 시 교체)
 
 ### `/intro`
-- 파츠들이 조립되는 애니메이션을 통해 `/main`으로 이동 (추후 구현)
-- 애니메이션 대신 일반 버튼으로도 즉시 `/main` 이동 가능해야 함
+- 2개의 이미지가 배치되어 있고, 오른쪽 파츠를 왼쪽으로 드래그해 일정 거리 이동시켜 정렬되면 `/main/parts`로 이동 (드래그 인터랙션은 구현, 실제 이미지·정확한 간격/정렬 기준은 Figma 연동 시 교체 예정)
 - 스크롤 불가
 
-### `/main`
-- 약 60개의 불규칙한 크기 이미지를 직사각형 공간 내에 배치, 연도별로 구분
-- 오른쪽 사이드 메뉴에서 필터 옵션 클릭 시, 해당하지 않는 이미지들의 불투명도를 낮추는 필터링 기능
-- 각 이미지 호버 시 이미지 전환 + 텍스트 레이어 노출
-- 이미지 클릭 시 해당 `/caption/[slug]`로 이동 (60개 중 20개만 캡션 페이지 보유)
+### `/main/parts`
+- 오른쪽 사이드에 parts / furniture 내비게이션이 있고, 클릭하면 각각 `/main/parts` / `/main/furniture`로 이동한다 (현재 페이지는 굵게 표시). 두 페이지가 이 내비게이션을 공유한다 (`src/components/MainSideNav.tsx`)
+- 53개의 불규칙한 크기 이미지를 직사각형 공간 내에 배치 (Figma 연동 완료)
+- 53개 중 17개는 `/caption/[slug]`로 연결되며, 호버 시 이미지 전환 + 텍스트 레이어 노출
+- 나머지 36개는 캡션 페이지가 없고, 호버 시 이미지가 어두워지며 텍스트 레이어 노출, 클릭 시 Instagram(`src/lib/constants.ts`의 `INSTAGRAM_URL`, 현재 플레이스홀더)으로 새 탭 이동
 - 세로 스크롤 가능
-- 상단 영역 관련 세부 내용은 추후 전달 예정 (미확정)
+- 상단에 작가 소개 문구, 하단에 로고·저작권 텍스트 포함
+
+### `/main/furniture`
+- `/main/parts`와 동일한 parts / furniture 내비게이션 공유
+- 17개의 이미지가 배치되어 있고, 전부 `/caption/[slug]`로 연결 (parts의 17개 캡션과 동일한 슬러그를 공유)
+- 각 이미지 호버 시 이미지 전환 + 텍스트 레이어 노출
+- Figma 프레임이 아직 없어 배치는 보수적인 placeholder 그리드로 구현 (`src/components/FurnitureGallery.tsx`)
 
 ### `/caption/[slug]`
-- 60개 이미지 중 20개에 대응하는 개별 페이지
+- parts(17개)와 furniture(17개, 동일한 작품)가 공유하는 17개 개별 페이지
 - 중앙 구분 영역을 기준으로 좌우에 큰 이미지 배치 (좌/우 각각 이미지 스택)
 - 오른쪽 스택의 마지막 이미지 자리에는 항상 크레딧 텍스트가 들어감
 - 개별 캐러셀 적용, 끝까지 넘기면 처음으로 순환
 - 스크롤 불가
 
 ### `/info`
-- 텍스트와 이미지가 조합된 기본적인 웹 UI
+- 텍스트와 이미지가 조합된 기본적인 웹 UI (Figma 연동 완료)
 - 텍스트 중 일부는 하이퍼링크 포함
 - 스크롤 가능
+
+## 데이터 구조 (`src/data/works.ts`)
+
+- `captionWorks` (17개): 캡션 페이지의 원본 데이터(slug/title/credit). parts와 furniture 갤러리가 이 슬러그를 공유한다.
+- `partsGallery` (53개): 앞 17개는 `captionWorks`와 1:1로 연결(`slug` 존재), 나머지 36개는 `instagramUrl`만 존재.
+- `furnitureGallery` (17개): `captionWorks` 전체와 1:1로 연결.
+- 모든 `image`/`hoverImage`는 현재 `null` 플레이스홀더 — 실제 이미지는 Figma 연동 시 채운다.
 
 ## Figma 연동
 
