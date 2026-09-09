@@ -17,28 +17,27 @@ const ebGaramond = EB_Garamond({ subsets: ["latin"], weight: "400" });
 // Figma "/main.parts" frame (get_metadata nodeId 23:1023): width=1920,
 // height=6728.
 //
-// Responsive rule (CLAUDE.md): the header, the author statement below it,
-// and the right-side parts/furniture nav all stay fixed-size and are laid
-// out in normal document flow with fixed gaps — only the tile grid itself
-// keeps scaling as one proportional block (the `.figma-canvas-*` mechanism,
-// unchanged) as the viewport narrows. So the grid is now its own canvas,
-// separate from the header/statement text above it: `GRID_Y_OFFSET` is the
-// original Figma y (197) where the grid starts, subtracted from every tile's
-// y below so the grid canvas's local origin is the grid's own top-left tile,
-// not the page's. The fixed header/statement/gap above it are rendered
-// separately, in plain (non-scaling) flow — see the JSX below.
-// Left margin (Figma x=50, same as the header/statement's fixed 50px) is
-// kept out of the scaled canvas entirely — see GRID_X_OFFSET below — so the
-// grid's left edge always lines up with them instead of drifting as the
-// canvas scales (reported as "왼쪽 시각점이 일치해").
-const GRID_X_OFFSET = 50;
-const CANVAS_WIDTH = 1920 - GRID_X_OFFSET;
-const GRID_Y_OFFSET = 197;
-// Grid canvas height = last tile's bottom edge (Rectangle 53: 6173.92+255),
-// minus GRID_Y_OFFSET — trims the trailing blank space that used to hold the
-// footer logo, now rendered separately below the grid (fixed-size, not
-// scaled — see the "공통 (하단)" rule).
-const CANVAS_HEIGHT = 6173.92 + 255 - GRID_Y_OFFSET;
+// The statement text, grid, and footer all live in ONE canvas scaled
+// uniformly by the same min(1, viewport/1920) factor (`.figma-canvas-*`,
+// globals.css) — TopBar/MainSideNav's own `.figma-fixed-scale` (see their
+// files) use the identical factor, so the whole page shrinks/grows together
+// as one composition, matching Figma exactly at any viewport width.
+//
+// An earlier revision split this into a "literally fixed px" group (header/
+// statement/nav/footer) and a "scales with the viewport" group (just the
+// grid), per a responsive rule read as "상단바 아래 텍스트 레이어... 는
+// 크기·비율 고정". That only matched Figma at exactly 1920px viewport width;
+// at any other width (i.e. almost every real browser window — MacBook
+// screens are commonly 1440-1728px) the "fixed" group didn't shrink with the
+// grid, so it visibly outgrew its correct proportion relative to the page
+// (reported as "박스 이외의 요소들이 크게 보여" — confirmed by the fact that
+// setting Chrome's own zoom to make `window.innerWidth` land back on exactly
+// 1920 made everything match again). So the statement/footer below now use
+// this page's raw Figma x/y coordinates directly, same as the tiles always
+// did — no more GRID_X_OFFSET/GRID_Y_OFFSET rebasing or separate flow-layout
+// margins for them.
+const CANVAS_WIDTH = 1920;
+const CANVAS_HEIGHT = 6728;
 
 // x/y/width/height for each of the 53 tiles (node ids 23:1028-23:1080), read
 // directly off get_metadata — not hand-tuned — sorted into visual
@@ -47,9 +46,6 @@ const CANVAS_HEIGHT = 6173.92 + 255 - GRID_Y_OFFSET;
 // positions changed), so it still lines up with PARTS_RECTANGLE_NUMBERS in
 // works.ts and the already-downloaded rectangle-N.jpg photos — object-cover
 // re-crops each existing photo (base and hover) to the new box automatically.
-// y values are still raw Figma frame coordinates (i.e. still include
-// GRID_Y_OFFSET) — subtracted at render time, not baked in here, so this
-// table stays a direct, checkable copy of get_metadata's numbers.
 //
 // The grid keeps its own children at exact Figma px positions (never
 // reflowed), uniformly scaled via `.figma-canvas-*` (globals.css) to fit the
@@ -131,34 +127,26 @@ export default function PartsGallery() {
   return (
     <>
       <MainSideNav fixed />
-      <div className="h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] pt-16">
-        {/* Figma's text node is 727x54 (23:1081) — fixed width (not
-            max-width) and height, per the "텍스트 레이어는 크기·비율 고정"
-            responsive rule, so it always wraps into exactly the same 2
-            lines regardless of viewport width instead of re-wrapping
-            narrower and overflowing its 54px box into the grid below. */}
+      <div className="h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8]">
         <div
-          className="mt-[82px] h-[54px] w-[727px] ml-[50px] text-[13px] text-[#696969] capitalize leading-[1.5]"
-        >
-          <p>{STATEMENT_LINE_1}</p>
-          <p>{STATEMENT_LINE_2}</p>
-        </div>
-
-        <div
-          className="figma-canvas-frame mt-[-3px]"
+          className="figma-canvas-frame"
           style={{
-            marginLeft: px(GRID_X_OFFSET),
-            width: `calc(100% - ${px(GRID_X_OFFSET)})`,
             ["--fc-width" as string]: px(CANVAS_WIDTH),
             ["--fc-height" as string]: px(CANVAS_HEIGHT),
           }}
         >
           <div className="figma-canvas-scaler">
             <div className="figma-canvas-content">
+              <div
+                className="absolute text-[13px] text-[#696969] capitalize leading-[1.5]"
+                style={{ left: px(50), top: px(146), width: px(727), height: px(54) }}
+              >
+                <p>{STATEMENT_LINE_1}</p>
+                <p>{STATEMENT_LINE_2}</p>
+              </div>
+
               {partsGallery.map((item, index) => {
-                const [xRaw, yRaw, w, h] = TILE_GEOM[index];
-                const x = xRaw - GRID_X_OFFSET;
-                const y = yRaw - GRID_Y_OFFSET;
+                const [x, y, w, h] = TILE_GEOM[index];
                 const isHovered = hoveredId === item.id;
                 const isInstagram = item.instagramUrl !== null;
 
@@ -231,19 +219,21 @@ export default function PartsGallery() {
                   </a>
                 );
               })}
+
+              <div
+                className="absolute"
+                style={{ left: px(925), top: px(6608.28125), width: px(69), height: px(87) }}
+              >
+                <Image src="/main/logo.png" alt="" fill className="object-contain" />
+              </div>
+              <p
+                className="absolute whitespace-nowrap text-[10px] text-[#818181]"
+                style={{ left: px(933), top: px(6688.28125), width: px(59) }}
+              >
+                Eunji Wang©
+              </p>
             </div>
           </div>
-        </div>
-
-        {/* Grid bottom (6428.92) to logo top (6620.281, the pre-existing
-            bottom-preserving 87->75 height crop — see FurnitureGallery.tsx)
-            = 191.36px; logo top to copyright top (6688.281-6620.281=68),
-            i.e. -7px from the logo box's own bottom (6620.281+75). */}
-        <div className="mt-[191px] flex flex-col items-center pb-16">
-          <div className="relative h-[75px] w-[69px]">
-            <Image src="/main/logo.png" alt="" fill className="object-contain" />
-          </div>
-          <p className="mt-[-7px] text-[10px] whitespace-nowrap text-[#818181]">Eunji Wang©</p>
         </div>
       </div>
     </>

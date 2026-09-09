@@ -27,12 +27,15 @@ type MainSideNavProps = {
   // PartsGallery.tsx/FurnitureGallery.tsx, which render it as a sibling of
   // the scroll container rather than inside the canvas tree.
   //
-  // Fixed size/position at every viewport width — anchored to the right
-  // edge (`right: 78px`, matching Figma's own margin from the frame's right
-  // edge at 1920px: 1920 - 1764 - 78) instead of scaling with the page
-  // canvas. As the viewport narrows, the canvas content to its left keeps
-  // shrinking (see PartsGallery.tsx/FurnitureGallery.tsx) while this stays
-  // put, so the gap between them is what closes up — not this nav itself.
+  // Viewport-pinned (stays put while the page scrolls, see the class above)
+  // AND scaled by the same min(1, viewport/1920) factor as the page canvas
+  // below it (`.figma-fixed-scale`, globals.css) — left-anchored at Figma's
+  // real x=1764 like PartsGallery.tsx/FurnitureGallery.tsx's grid, not the
+  // viewport's right edge. A literal `right: 78px` anchor used to hold this
+  // nav's screen position fixed while the canvas scaled down around it, but
+  // that meant its own size/position never scaled either, so at any width
+  // other than exactly 1920px it drifted out of proportion with the (now
+  // correctly-scaling) page content — same issue as TopBar, see its comment.
   fixed?: boolean;
 };
 
@@ -41,24 +44,26 @@ export default function MainSideNav({ pinned = false, fixed = false }: MainSideN
 
   if (fixed) {
     return (
-      <div className="pointer-events-none fixed inset-x-0 top-0 z-30">
-        {NAV_ITEMS.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`pointer-events-auto absolute text-right capitalize ${
-              pathname === item.href ? "font-bold" : ""
-            }`}
-            style={{
-              right: px(78),
-              top: px(item.y),
-              width: px(78),
-              fontSize: px(13),
-            }}
-          >
-            {item.label}
-          </Link>
-        ))}
+      <div className="figma-fixed-scale pointer-events-none fixed inset-x-0 top-0 z-30">
+        <div className="figma-fixed-scale-inner">
+          {NAV_ITEMS.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`pointer-events-auto absolute text-right capitalize ${
+                pathname === item.href ? "font-bold" : ""
+              }`}
+              style={{
+                left: px(1764),
+                top: px(item.y),
+                width: px(78),
+                fontSize: px(13),
+              }}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
       </div>
     );
   }

@@ -99,3 +99,30 @@ body {
   transform: scale(var(--fc-scale));
   transform-origin: top left;
 }
+
+/*
+ * Figma viewport-pinned scaling.
+ *
+ * For chrome that floats over the page at a fixed viewport position (TopBar,
+ * MainSideNav's `fixed` variant) but must still shrink/grow with the exact
+ * same min(1, viewport/1920) factor as the page's own `.figma-canvas-*`
+ * content below it. Without this, this chrome stays literally fixed-size
+ * (e.g. font-size: 13px, always) while the page content scales down at
+ * narrower widths, so it visibly outgrows its correct proportion relative to
+ * the page at any viewport other than exactly 1920px — reported as "박스
+ * 이외의 요소들이 [디자인보다] 크게 보여" (confirmed: setting the browser's
+ * own zoom to make window.innerWidth land back on 1920 made it match again).
+ *
+ * Usage: two nested elements, the outer sized to the viewport itself —
+ *   <header class="figma-fixed-scale fixed inset-x-0 top-0">
+ *     <div class="figma-fixed-scale-inner"> ...literal-Figma-px children... </div>
+ *   </header>
+ */
+.figma-fixed-scale {
+  container-type: inline-size;
+}
+
+.figma-fixed-scale-inner {
+  transform: scale(min(1, calc(100cqw / 1920px)));
+  transform-origin: top left;
+}
