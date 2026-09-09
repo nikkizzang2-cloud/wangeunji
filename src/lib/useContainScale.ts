@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 
 /**
  * Scale factor to fit a `width`x`height` Figma canvas entirely inside the
- * viewport with no scroll and no clipping — `min(vw/width, vh/height)`,
- * i.e. `object-fit: contain` for the whole page. For a no-scroll page
+ * viewport with no scroll and no clipping — `min(1, vw/width, vh/height)`,
+ * i.e. `object-fit: contain` (never upscaled past the canvas's real size —
+ * same "1920px보다 넓을 때 커짐" cap as the `.figma-canvas-*` classes in
+ * globals.css) for the whole page. For a no-scroll page
  * (/intro, /caption), the `.figma-canvas-*` classes (globals.css) aren't
  * enough on their own: those scale by width only (`100cqw`), which is right
  * for a scrolling page (any extra height just scrolls), but on a no-scroll
@@ -32,7 +34,7 @@ export function useContainScale(width: number, height: number) {
 
   useEffect(() => {
     function update() {
-      setScale(Math.min(window.innerWidth / width, window.innerHeight / height));
+      setScale(Math.min(1, window.innerWidth / width, window.innerHeight / height));
     }
     update();
     window.addEventListener("resize", update);
