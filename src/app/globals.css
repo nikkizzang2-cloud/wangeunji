@@ -180,3 +180,35 @@ body {
      a top-left pivot on the flex-centered case would instead drag the box
      off-center toward its own unscaled top-left corner. */
 }
+
+/*
+ * Figma zoom-scale (width-only, content-driven height, pure CSS).
+ *
+ * For a *scrolling* page whose total height genuinely varies with content
+ * (e.g. /caption/[slug] mobile — caption text length differs per work) —
+ * `.figma-canvas-*` above doesn't fit here, since it requires a known
+ * `--fc-height` up front and clips anything taller (`overflow: hidden` on
+ * `.figma-canvas-scaler`) — that would cut off long captions. `transform:
+ * scale()` doesn't help either: it changes paint size but not layout size,
+ * so a `height:auto` scaled box wouldn't shrink the space it reserves in
+ * its parent, breaking scroll height.
+ *
+ * `zoom` (unlike `transform`) affects *layout*, not just paint — a zoomed
+ * `height:auto` element's box is the zoomed size in normal flow, so the
+ * scrolling ancestor's scrollable height comes out correct automatically,
+ * with no JS measurement of any kind.
+ *
+ * Usage: two nested elements, the *outer* one (not the zoomed one) is the
+ * container-query context, sized to the viewport —
+ *   <div class="figma-zoom-frame h-screen overflow-y-auto">
+ *     <div class="figma-zoom-content" style="--fz-width:800px"> ...literal-Figma-px children, position:static/normal flow... </div>
+ *   </div>
+ */
+.figma-zoom-frame {
+  container-type: inline-size;
+}
+
+.figma-zoom-content {
+  width: var(--fz-width);
+  zoom: min(1, calc(100cqw / var(--fz-width)));
+}

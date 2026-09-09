@@ -84,7 +84,7 @@ type CaptionCarouselProps = {
   work: CaptionWork;
 };
 
-export default function CaptionCarousel({ work }: CaptionCarouselProps) {
+function DesktopCaption({ work }: CaptionCarouselProps) {
   const media = CAPTION_MEDIA[work.slug] ?? { left: [], right: [] };
   const leftCount = media.left.length;
   const rightCount = media.right.length;
@@ -118,7 +118,7 @@ export default function CaptionCarousel({ work }: CaptionCarouselProps) {
 
   return (
     <div
-      className="figma-contain-scale relative h-dvh overflow-hidden bg-[#f8f8f8]"
+      className="figma-contain-scale relative hidden h-dvh overflow-hidden bg-[#f8f8f8] min-[800px]:block"
       style={{
         ["--fcs-width" as string]: px(CANVAS_WIDTH),
         ["--fcs-height" as string]: px(CANVAS_HEIGHT),
@@ -253,5 +253,214 @@ export default function CaptionCarousel({ work }: CaptionCarouselProps) {
         </div>
       </div>
     </div>
+  );
+}
+
+// Figma "cation mobile" (nodeId 95:2398): width=800, height=1591 (a single
+// reference screen — the mobile design doesn't split into separate
+// left/right carousels like desktop; per the user, one carousel cycles
+// through every image, and the title/info/caption text sits statically
+// below it rather than being gated behind cycling through all the photos
+// like desktop's right-carousel text slide).
+//
+// This page's *height* genuinely varies with content (caption length
+// differs per work), which none of the site's other Figma-canvas
+// mechanisms handle — see `.figma-zoom-frame`/`.figma-zoom-content` in
+// globals.css for why this needed a new one (`zoom`, not `transform`).
+const MOBILE_CANVAS_WIDTH = 800;
+
+const MOBILE_IMAGE_BOX = { x: 46, y: 123, w: 597, h: 759 };
+const MOBILE_TITLE = { x: 46, y: 909, w: 151 };
+const MOBILE_SUBTITLE = { x: 45, y: 963, w: 218 };
+// Figma's own "제목설명" (작업제목/workSubtitle) node in this frame has its
+// example content wrongly duplicated from the KO/EN caption (a much longer
+// string than a subtitle should ever be), so its declared box height/the
+// literal gap down to the info row below it aren't trustworthy — this gap
+// is a reasonable stand-in (matching INFO_GAP below) rather than a faithful
+// Figma number.
+const MOBILE_SUBTITLE_TO_INFO_GAP = 24;
+// Image box has a fixed, content-independent height, so this gap (image
+// bottom -> title top) is a faithful Figma number: 909 - (123+759) = 27.
+const MOBILE_IMAGE_TO_TITLE_GAP = MOBILE_TITLE.y - (MOBILE_IMAGE_BOX.y + MOBILE_IMAGE_BOX.h);
+// Title's own rendered height varies with content (1 vs 2 lines), so —
+// unlike the image gap above — Figma's raw top-to-top distance (963-909=54)
+// isn't a usable margin-top (that would double-count the title's height).
+// 18px is a reasonable stand-in matching the title block's Figma-declared
+// 2-line height (36px) against that same 54px top-to-top distance.
+const MOBILE_TITLE_TO_SUBTITLE_GAP = 18;
+
+// 정보1/2/3 (Group 257) sit in a left column at x=46; 한글/영문캡션 (Group
+// 258) sit in a separate column beside it at x=358 — genuinely two side-by
+// side columns in this frame, not one stacked column like desktop's single
+// right-carousel text layer. Both start at the same y (1170), so a flex
+// row with each side as its own flex column (INFO_GAP between 정보1/2/3,
+// matching desktop's same "Figma's own gaps are inconsistent, use one
+// uniform gap" fix; 35px between KO/EN, a real Figma number here) keeps
+// both readable regardless of how long any individual piece of text runs.
+const MOBILE_INFO_X = 46;
+const MOBILE_INFO_VALUE_WIDTH = 170; // Group 257's own width (261) minus INFO_LABEL_WIDTH (91)
+const MOBILE_CAPTION_X = 358;
+const MOBILE_CAPTION_GAP = MOBILE_CAPTION_X - MOBILE_INFO_X - (INFO_LABEL_WIDTH + MOBILE_INFO_VALUE_WIDTH);
+const MOBILE_CAPTION_KO_WIDTH = 305;
+const MOBILE_CAPTION_EN_WIDTH = 325;
+const MOBILE_CAPTION_KO_EN_GAP = 35;
+
+// Reorders one work's left+right media into a single list for the mobile
+// carousel: all photos first, then any video/gif, then the drawing (if
+// any) last — "사진 - 영상,gif(있다면) - 드로잉". Per the user, the LAST
+// item of the `left` array (if it's an image, not a video) is always the
+// drawing — the same "drawing files sort last within left" convention the
+// original import already applied (see captionMedia.ts), reused here
+// rather than re-detected some other way (there's no explicit "this is a
+// drawing" flag in the data).
+function buildMobileMediaOrder(media: { left: CaptionMediaItem[]; right: CaptionMediaItem[] }) {
+  const isVideoOrGif = (item: CaptionMediaItem) =>
+    item.type === "video" || item.src.toLowerCase().endsWith(".gif");
+
+  const lastLeft = media.left.length > 0 ? media.left[media.left.length - 1] : null;
+  const drawing = lastLeft && !isVideoOrGif(lastLeft) ? lastLeft : null;
+
+  const rest = [...media.left, ...media.right].filter((item) => item !== drawing);
+  const photos = rest.filter((item) => !isVideoOrGif(item));
+  const videosAndGifs = rest.filter(isVideoOrGif);
+
+  return drawing ? [...photos, ...videosAndGifs, drawing] : [...photos, ...videosAndGifs];
+}
+
+function MobileCaption({ work }: CaptionCarouselProps) {
+  const media = CAPTION_MEDIA[work.slug] ?? { left: [], right: [] };
+  const orderedMedia = buildMobileMediaOrder(media);
+  const [index, setIndex] = useState(0);
+
+  const advance = () => {
+    if (orderedMedia.length === 0) return;
+    setIndex((current) => (current + 1) % orderedMedia.length);
+  };
+
+  const dimensionUnits = work.partsInfo.dimensions
+    ? splitDimensionUnits(work.partsInfo.dimensions)
+    : [];
+  const exhibitionLines = work.exhibition
+    ? Array.isArray(work.exhibition)
+      ? work.exhibition
+      : [work.exhibition]
+    : ["TBD"];
+
+  return (
+    <div className="figma-zoom-frame h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] min-[800px]:hidden">
+      <div
+        className="figma-zoom-content pb-16"
+        style={{ ["--fz-width" as string]: px(MOBILE_CANVAS_WIDTH) }}
+      >
+        <button
+          type="button"
+          onClick={advance}
+          aria-label="Next image"
+          className="relative block overflow-hidden bg-[#f8f8f8]"
+          style={{
+            marginLeft: px(MOBILE_IMAGE_BOX.x),
+            marginTop: px(MOBILE_IMAGE_BOX.y),
+            width: px(MOBILE_IMAGE_BOX.w),
+            height: px(MOBILE_IMAGE_BOX.h),
+          }}
+        >
+          {orderedMedia.length > 0 && <MediaFrame item={orderedMedia[index]} />}
+        </button>
+
+        <div
+          className="text-[12px] leading-[1.5] capitalize"
+          style={{
+            marginLeft: px(MOBILE_TITLE.x),
+            marginTop: px(MOBILE_IMAGE_TO_TITLE_GAP),
+            width: px(MOBILE_TITLE.w),
+          }}
+        >
+          {(work.workTitleLines ?? [work.title]).map((line, i) => (
+            <p key={i}>{line}</p>
+          ))}
+        </div>
+
+        <div
+          className={`${pretendard.className} text-[12px] leading-[1.4]`}
+          style={{
+            marginLeft: px(MOBILE_SUBTITLE.x),
+            marginTop: px(MOBILE_TITLE_TO_SUBTITLE_GAP),
+            width: px(MOBILE_SUBTITLE.w),
+          }}
+        >
+          {work.workSubtitle ?? "TBD"}
+        </div>
+
+        <div
+          className="flex"
+          style={{ marginLeft: px(MOBILE_INFO_X), marginTop: px(MOBILE_SUBTITLE_TO_INFO_GAP) }}
+        >
+          <div
+            className="flex flex-col text-left text-[11px] text-black capitalize leading-[1.5]"
+            style={{ gap: px(INFO_GAP) }}
+          >
+            <div className="flex">
+              <div className="shrink-0 whitespace-nowrap" style={{ width: px(INFO_LABEL_WIDTH) }}>
+                <p>Parts</p>
+                <p>type</p>
+                <p>size</p>
+              </div>
+              <div style={{ width: px(MOBILE_INFO_VALUE_WIDTH) }}>
+                <p>{work.partsInfo.name}</p>
+                {work.partsInfo.type && <p>{work.partsInfo.type}</p>}
+                {dimensionUnits.map((unit, index) => (
+                  <p key={index}>{unit}</p>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex">
+              <div className="shrink-0 whitespace-nowrap" style={{ width: px(INFO_LABEL_WIDTH) }}>
+                for
+              </div>
+              <div style={{ width: px(MOBILE_INFO_VALUE_WIDTH) }}>
+                {exhibitionLines.map((line, index) => (
+                  <p key={index}>{line}</p>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex">
+              <div className="shrink-0 whitespace-nowrap" style={{ width: px(INFO_LABEL_WIDTH) }}>
+                date
+              </div>
+              <div>{work.year ?? "TBD"}</div>
+            </div>
+          </div>
+
+          <div
+            className="flex flex-col text-[12px] leading-[1.5]"
+            style={{ marginLeft: px(MOBILE_CAPTION_GAP) }}
+          >
+            <div className={pretendard.className} style={{ width: px(MOBILE_CAPTION_KO_WIDTH) }}>
+              {(work.captionKo ?? ["TBD"]).map((line, index) => (
+                <p key={index}>{line}</p>
+              ))}
+            </div>
+            <div
+              style={{ marginTop: px(MOBILE_CAPTION_KO_EN_GAP), width: px(MOBILE_CAPTION_EN_WIDTH) }}
+            >
+              {(work.captionEn ?? ["TBD"]).map((line, index) => (
+                <p key={index}>{line}</p>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function CaptionCarousel({ work }: CaptionCarouselProps) {
+  return (
+    <>
+      <DesktopCaption work={work} />
+      <MobileCaption work={work} />
+    </>
   );
 }

@@ -19,8 +19,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ko" className={`${helvetica.variable} h-full antialiased`}>
-      <body className="min-h-full">
+    <html lang="ko" className={`${helvetica.variable} h-full antialiased`} suppressHydrationWarning>
+      <body className="min-h-full" suppressHydrationWarning>
         <TopBar />
         {children}
       </body>

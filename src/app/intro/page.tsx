@@ -41,14 +41,14 @@ const MOBILE_CANVAS = { width: 800, height: 1532 };
 //
 // There's no equivalent second "aligned" frame for mobile, so its drag
 // distance is derived by scaling the desktop value by the lock piece's own
-// size ratio (mobile lock-left width 100 / desktop lock-left width
-// 114.52941... ≈ 0.873) rather than the frame-width ratio (800/1920 ≈
+// size ratio (mobile lock-left width 118.452... / desktop lock-left width
+// 114.52941... ≈ 1.034) rather than the frame-width ratio (800/1920 ≈
 // 0.417) — the interlocking geometry should scale with the drawn object
 // itself, not the frame. Approximate pending a real mobile "aligned"
 // reference frame; easy to correct if the drag distance feels off.
 const DESKTOP_DRAG_DISTANCE_PX = 98.109130859375;
 const DESKTOP_ALIGN_THRESHOLD_PX = 15;
-const MOBILE_LOCK_SCALE = 100 / 114.52941131591797;
+const MOBILE_LOCK_SCALE = 118.45237731933594 / 114.52941131591797;
 const MOBILE_DRAG_DISTANCE_PX = DESKTOP_DRAG_DISTANCE_PX * MOBILE_LOCK_SCALE;
 const MOBILE_ALIGN_THRESHOLD_PX = DESKTOP_ALIGN_THRESHOLD_PX * MOBILE_LOCK_SCALE;
 
@@ -71,10 +71,10 @@ const DESKTOP_GEOM: LockGeom = {
 };
 
 const MOBILE_GEOM: LockGeom = {
-  lockLeft: { x: 276, y: 716, w: 100, h: 134 },
-  lockLeft1: { x: 288, y: 756, w: 75, h: 56 },
-  lockRight2: { x: 376, y: 682, w: 188, h: 133 },
-  lockRight: { x: 393, y: 710, w: 170, h: 82 },
+  lockLeft: { x: 228.9988839328289, y: 691.273811340332, w: 118.45237731933594, h: 158.7261962890625 },
+  lockLeft1: { x: 243.2131700515747, y: 738.6547622680664, w: 88.79436492919922, h: 66.36691284179688 },
+  lockRight2: { x: 347.49683380126953, y: 651.0000000000036, w: 222.64491271972656, h: 157.5738983154297 },
+  lockRight: { x: 367.5881652832031, y: 684.1666679382324, w: 201.3201904296875, h: 97.1545181274414 },
   dragDistance: MOBILE_DRAG_DISTANCE_PX,
   alignThreshold: MOBILE_ALIGN_THRESHOLD_PX,
 };
