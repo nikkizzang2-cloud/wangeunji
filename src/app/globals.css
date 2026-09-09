@@ -113,16 +113,70 @@ body {
  * 이외의 요소들이 [디자인보다] 크게 보여" (confirmed: setting the browser's
  * own zoom to make window.innerWidth land back on 1920 made it match again).
  *
+ * `--ffs-width` is the reference frame width this chrome's px values were
+ * read off (defaults to 1920, the desktop frame width) — pass 800px at the
+ * mobile breakpoint, where TopBar's own numbers come from a separate,
+ * narrower Figma frame instead of being a scaled-down copy of the desktop
+ * one.
+ *
  * Usage: two nested elements, the outer sized to the viewport itself —
- *   <header class="figma-fixed-scale fixed inset-x-0 top-0">
+ *   <header class="figma-fixed-scale fixed inset-x-0 top-0" style="--ffs-width:1920px">
  *     <div class="figma-fixed-scale-inner"> ...literal-Figma-px children... </div>
  *   </header>
  */
 .figma-fixed-scale {
   container-type: inline-size;
+  --ffs-scale: min(1, calc(100cqw / var(--ffs-width, 1920px)));
 }
 
 .figma-fixed-scale-inner {
-  transform: scale(min(1, calc(100cqw / 1920px)));
+  transform: scale(var(--ffs-scale));
   transform-origin: top left;
+}
+
+/*
+ * Figma contain-scale (both axes, pure CSS).
+ *
+ * For a no-scroll page (/intro, /caption) that must fit a fixed-aspect
+ * canvas entirely inside the viewport — width AND height both considered
+ * (`object-fit: contain`), capped at 1x — computed purely in CSS via
+ * `container-type: size`, which lets a container query see both `cqw` and
+ * `cqh` (not just `cqw`, which `.figma-canvas-*` above uses for
+ * scrolling pages where extra height just scrolls).
+ *
+ * Previously this used a JS hook (`useContainScale`, now removed) that read
+ * `window.innerWidth`/`innerHeight` in a `useEffect` after mount. That's a
+ * real fragility in some in-app WebViews (KakaoTalk's browser reported):
+ * if the effect's measurement or resize listener doesn't fire reliably
+ * there, the scale silently stays at its `useState(1)` default — i.e. the
+ * canvas renders at its literal full Figma px size (e.g. 800px wide) on a
+ * ~390px phone screen, looking roughly 2x too big ("잠금장치 사이즈가 너무
+ * 커"). Pure CSS has no such timing dependency.
+ *
+ * `container-type: size` requires the container to have a definite width
+ * AND height (not content-derived) — use `h-dvh`/`h-screen` (a real
+ * length), never a plain block whose height is "auto".
+ *
+ * Usage: two nested elements, the outer with a real height —
+ *   <div class="figma-contain-scale h-dvh" style="--fcs-width:800px; --fcs-height:1532px">
+ *     <div class="figma-contain-scale-inner"> ...literal-Figma-px children... </div>
+ *   </div>
+ */
+.figma-contain-scale {
+  container-type: size;
+  --fcs-scale: min(1, calc(100cqw / var(--fcs-width)), calc(100cqh / var(--fcs-height)));
+}
+
+.figma-contain-scale-inner {
+  transform: scale(var(--fcs-scale));
+  /* No transform-origin set here on purpose — it defaults to "50% 50%"
+     (center), which is what a flex-centered usage (intro/page.tsx: the
+     parent has `display:flex; align/justify-content:center`, so this
+     element's UNSCALED layout box is already centered by flex — pivoting
+     the scale around that same center keeps it centered after shrinking)
+     needs. A usage that's `position:absolute;left:0;top:0` instead (not
+     flex-centered — e.g. CaptionCarousel.tsx, anchored top-left, not
+     centered) must override this to `transform-origin: top left` inline;
+     a top-left pivot on the flex-centered case would instead drag the box
+     off-center toward its own unscaled top-left corner. */
 }

@@ -7,7 +7,6 @@ import type { CaptionWork } from "@/data/works";
 import { CAPTION_MEDIA, type CaptionMediaItem } from "@/data/captionMedia";
 import { splitDimensionUnits } from "@/data/partsInfo";
 import { px } from "@/lib/figma-layout";
-import { useContainScale } from "@/lib/useContainScale";
 
 // Figma "caption" / "caption.textframe" frames (get_metadata nodeId 72:1167 /
 // 72:1145 — two states of the same page: with vs without the right
@@ -15,9 +14,13 @@ import { useContainScale } from "@/lib/useContainScale";
 // all its photos). width=1920, height=1080, includes the header region like
 // /intro. Raw Figma y-coordinates are used as-is below — no TOPBAR_HEIGHT
 // subtraction/pt-16 reservation (see PartsGallery.tsx / TopBar.tsx for why).
-// Scaled via `useContainScale` (not the `.figma-canvas-*` classes' width-only
-// `cqw`), since this is a no-scroll page: see that hook's doc comment for why
-// width-only scaling clips the bottom on a viewport wider than 16:9.
+// Scaled via `.figma-contain-scale` (globals.css) — not the `.figma-canvas-*`
+// classes' width-only `cqw`, since this is a no-scroll page and width-only
+// scaling would clip the bottom on a viewport wider than 16:9. Used to be a
+// JS hook (`useContainScale`) instead, but that read
+// `window.innerWidth`/`innerHeight` in a `useEffect` after mount, which
+// turned out unreliable in KakaoTalk's in-app browser — see
+// `.figma-contain-scale`'s comment in globals.css for the full story.
 const CANVAS_WIDTH = 1920;
 const CANVAS_HEIGHT = 1080;
 
@@ -82,7 +85,6 @@ type CaptionCarouselProps = {
 };
 
 export default function CaptionCarousel({ work }: CaptionCarouselProps) {
-  const scale = useContainScale(CANVAS_WIDTH, CANVAS_HEIGHT);
   const media = CAPTION_MEDIA[work.slug] ?? { left: [], right: [] };
   const leftCount = media.left.length;
   const rightCount = media.right.length;
@@ -115,13 +117,18 @@ export default function CaptionCarousel({ work }: CaptionCarouselProps) {
     : ["TBD"];
 
   return (
-    <div className="relative h-screen overflow-hidden bg-[#f8f8f8]">
+    <div
+      className="figma-contain-scale relative h-dvh overflow-hidden bg-[#f8f8f8]"
+      style={{
+        ["--fcs-width" as string]: px(CANVAS_WIDTH),
+        ["--fcs-height" as string]: px(CANVAS_HEIGHT),
+      }}
+    >
       <div
-        className="absolute top-0 left-0"
+        className="figma-contain-scale-inner absolute top-0 left-0"
         style={{
           width: px(CANVAS_WIDTH),
           height: px(CANVAS_HEIGHT),
-          transform: `scale(${scale})`,
           transformOrigin: "top left",
         }}
       >
