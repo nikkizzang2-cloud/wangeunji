@@ -1,24 +1,25 @@
 import Image from "next/image";
 import localFont from "next/font/local";
-import type { ReactNode } from "react";
+import { px } from "@/lib/figma-layout";
 
 // Figma "info" frame (get_metadata nodeId 16:2 / 48:105): width=1920,
-// height=1731. Per the responsive rules in CLAUDE.md, this page no longer
-// scales as one fixed canvas: the CV photo stays fixed-size and
-// fixed-position at every viewport width, and the right-hand text column
-// keeps a fixed right margin (`pr-*` below) while its own width — and so its
-// left-hand gap from the CV — is what shrinks as the viewport narrows. Font
-// sizes stay fixed throughout; a narrower column just wraps onto more
-// lines, same as any ordinary fluid paragraph. `flex-wrap` on the row lets
-// the column drop below the CV rather than overflow if it ever runs out of
-// room to shrink.
+// height=1731.
 //
-// All the margins/gaps/widths below are read directly off get_metadata (not
-// hand-tuned), same convention as PartsGallery.tsx/FurnitureGallery.tsx. A
-// content block that another element's margin is computed from (e.g. the EN
-// paragraph, 237px tall in Figma) gets an explicit CSS height matching that
-// Figma height, so the margin math is a fixed number, not dependent on how
-// the browser happens to wrap/measure the text.
+// Same single-canvas approach as PartsGallery.tsx/FurnitureGallery.tsx: every
+// element keeps its raw Figma x/y/width, and the whole frame is scaled
+// uniformly by the same min(1, viewport/1920) factor as TopBar and the
+// /main pages (`.figma-canvas-*`, globals.css) — so font sizes, gaps, and
+// text-wrap widths all shrink/grow together and the composition matches
+// Figma exactly at any viewport width, same as everywhere else on the site.
+//
+// An earlier revision used a fluid flexbox layout instead (fixed font
+// sizes, `flex-wrap` letting the text column reflow/wrap onto more lines as
+// the viewport narrowed) specifically to avoid the older `figma-pin`
+// mismatch — that approach scaled x-position as a % of viewport width while
+// leaving font-size fixed, so a narrower screen wrapped text more than
+// Figma intended and it could collide with the section below. The unified
+// canvas here doesn't have that problem (font-size scales right along with
+// position/width), so text always wraps exactly as it does in Figma.
 //
 // The Korean body copy is set in Pretendard Medium in the design, distinct
 // from the Helvetica used everywhere else on the site.
@@ -27,6 +28,9 @@ const pretendard = localFont({
   weight: "500",
   display: "swap",
 });
+
+const CANVAS_WIDTH = 1920;
+const CANVAS_HEIGHT = 1731;
 
 type ExhibitionEntry = {
   year: string;
@@ -61,48 +65,34 @@ const EXHIBITION_ENTRIES: ExhibitionEntry[] = [
   { year: "2023", text: "Here or There, Sinchon Cultural Center, Seoul, South Korea" },
 ];
 
-// Label width: 68px, the widest label ("introduction"). Label-to-content
-// gap: 1164 (content x) - 872 (label x) - 68 (label width) = 224px.
-const SECTION_LABEL_CLASS = "w-[68px] shrink-0 text-[13px] font-normal capitalize text-[#656565]";
-
-function InfoSection({
-  label,
-  className = "",
-  children,
-}: {
-  label: string;
-  className?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className={`flex flex-wrap gap-x-[224px] gap-y-3 ${className}`}>
-      <h2 className={SECTION_LABEL_CLASS}>{label}</h2>
-      <div className="min-w-[280px] flex-1">{children}</div>
-    </div>
-  );
-}
+const SECTION_LABEL_CLASS = "absolute w-[68px] text-[13px] font-normal capitalize text-[#656565]";
 
 export default function InfoPage() {
   return (
-    <div className="h-screen overflow-y-auto bg-[#f8f8f8] pt-16">
-      {/* Row top margin: cv's own top (253) - header height (64) = 189.
-          Row gap: label x (872) - cv right edge (0+753) = 119. Row right
-          margin: frame width (1920) - Exhibition's right edge (1164+600),
-          the widest content column, = 156. */}
-      <div className="mt-[189px] flex flex-wrap items-start gap-x-[119px] gap-y-12 pr-[156px]">
-        <div className="relative h-[518px] w-[753px] shrink-0 overflow-hidden">
-          <Image src="/info/cv.png" alt="" fill className="object-cover" priority />
-        </div>
+    <div className="h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8]">
+      <div
+        className="figma-canvas-frame"
+        style={{
+          ["--fc-width" as string]: px(CANVAS_WIDTH),
+          ["--fc-height" as string]: px(CANVAS_HEIGHT),
+        }}
+      >
+        <div className="figma-canvas-scaler">
+          <div className="figma-canvas-content">
+            <div
+              className="absolute overflow-hidden"
+              style={{ left: px(0), top: px(253), width: px(753), height: px(518) }}
+            >
+              <Image src="/info/cv.png" alt="" fill className="object-cover" priority />
+            </div>
 
-        {/* The text column's own top (270) sits 17px below the cv's top
-            (253) in Figma — they aren't top-aligned. */}
-        <div className="mt-[17px] min-w-[320px] flex-1">
-          <InfoSection label="introduction">
-            {/* Fixed to Figma's own box height (237) so the Korean
-                paragraph's margin-top below is a deterministic 51px
-                (558 - 270 - 237), not dependent on how the browser wraps
-                this text. */}
-            <div className="h-[237px] text-[13px] leading-[1.7]">
+            <h2 className={SECTION_LABEL_CLASS} style={{ left: px(872), top: px(270) }}>
+              introduction
+            </h2>
+            <div
+              className="absolute text-[13px] leading-[1.7]"
+              style={{ left: px(1164), top: px(270), width: px(564), height: px(237) }}
+            >
               <p>
                 Furniture serves a clear purpose as a tool that supports everyday life, yet it
                 also exists in a state of hypothesis, as its purpose can shift through interaction
@@ -119,10 +109,9 @@ export default function InfoPage() {
                 of these devices as &apos;parts&apos;.
               </p>
             </div>
-            {/* Fixed to Figma's box height (223) so the next section's
-                margin-top (190px, computed below) is deterministic too. */}
             <div
-              className={`${pretendard.className} mt-[51px] h-[223px] text-[13px] leading-[1.75]`}
+              className={`${pretendard.className} absolute text-[13px] leading-[1.75]`}
+              style={{ left: px(1164), top: px(558), width: px(546), height: px(223) }}
             >
               <p>
                 가구는 인간의 생활을 보조하는 도구라는 점에서 명확한 목적성을 담보하고 있으면서도,
@@ -137,14 +126,14 @@ export default function InfoPage() {
                 열어두는 구조적 장치를 필요로 하는데, 나는 그것을 &lsquo;파츠&rsquo;로 상정하였다.
               </p>
             </div>
-          </InfoSection>
 
-          {/* Gap from the introduction section's bottom (270+237+51+223=781)
-              to Exhibition's top (971) = 190. */}
-          <InfoSection label="Exhibition" className="mt-[190px]">
-            {/* Fixed to Figma's box height (308) so contact's margin-top
-                below is deterministic (59px = 1338 - 971 - 308). */}
-            <div className="h-[308px] text-[14px] leading-[2]">
+            <h2 className={SECTION_LABEL_CLASS} style={{ left: px(872), top: px(971) }}>
+              Exhibition
+            </h2>
+            <div
+              className="absolute text-[14px] leading-[2]"
+              style={{ left: px(1164), top: px(971), width: px(600), height: px(308) }}
+            >
               {EXHIBITION_ENTRIES.map((entry, index) => (
                 <p key={index}>
                   {entry.year}
@@ -164,12 +153,14 @@ export default function InfoPage() {
                 </p>
               ))}
             </div>
-          </InfoSection>
 
-          {/* Gap from Exhibition's bottom (971+308=1279) to contact's top
-              (1338) = 59. */}
-          <InfoSection label="contact" className="mt-[59px]">
-            <div className="max-w-[161px] text-[14px] lowercase leading-[1.5]">
+            <h2 className={SECTION_LABEL_CLASS} style={{ left: px(872), top: px(1338) }}>
+              contact
+            </h2>
+            <div
+              className="absolute text-[14px] lowercase leading-[1.5]"
+              style={{ left: px(1166), top: px(1338), width: px(161), height: px(63) }}
+            >
               <p>+82 01091395405</p>
               <p>eunji.wang.0@gmail.com</p>
               <a
@@ -181,20 +172,21 @@ export default function InfoPage() {
                 wang.eunjj@instagram
               </a>
             </div>
-          </InfoSection>
-        </div>
-      </div>
 
-      {/* Contact content's bottom (1338+63=1401) to logo top (1620, the
-          pre-existing bottom-preserving 87->75 height crop — see
-          PartsGallery.tsx's footer) = 219. Logo top to copyright top
-          (1688-1620=68), i.e. -7px from the logo box's own bottom
-          (1620+75) — same convention as every other page's footer. */}
-      <div className="mt-[219px] flex flex-col items-center pb-16">
-        <div className="relative h-[75px] w-[69px]">
-          <Image src="/main/logo.png" alt="" fill className="object-contain" />
+            <div
+              className="absolute"
+              style={{ left: px(925), top: px(1608), width: px(69), height: px(87) }}
+            >
+              <Image src="/main/logo.png" alt="" fill className="object-contain" />
+            </div>
+            <p
+              className="absolute whitespace-nowrap text-[10px] text-[#818181]"
+              style={{ left: px(933), top: px(1688), width: px(59) }}
+            >
+              Eunji Wang©
+            </p>
+          </div>
         </div>
-        <p className="mt-[-7px] text-[10px] whitespace-nowrap text-[#818181]">Eunji Wang©</p>
       </div>
     </div>
   );
