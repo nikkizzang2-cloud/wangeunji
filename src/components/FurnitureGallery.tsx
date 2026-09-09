@@ -18,8 +18,11 @@ const ebGaramond = EB_Garamond({ subsets: ["latin"], weight: "400" });
 // Same responsive split as PartsGallery.tsx: header/statement text/side nav
 // are fixed-size, plain document flow; only the tile grid keeps scaling as
 // one proportional block. GRID_Y_OFFSET/CANVAS_HEIGHT follow the same
-// rebasing — see PartsGallery.tsx's comment for the full rationale.
-const CANVAS_WIDTH = 1920;
+// rebasing — see PartsGallery.tsx's comment for the full rationale, including
+// GRID_X_OFFSET keeping the grid's left edge pinned to the same fixed 50px
+// margin as the header/statement instead of drifting as the canvas scales.
+const GRID_X_OFFSET = 50;
+const CANVAS_WIDTH = 1920 - GRID_X_OFFSET;
 const GRID_Y_OFFSET = 197;
 // Grid canvas height = last tile's bottom edge (50.996,2483.24,502.95,343.29
 // -> 2483.24+343.29), minus GRID_Y_OFFSET.
@@ -92,13 +95,12 @@ export default function FurnitureGallery() {
   return (
     <>
       <MainSideNav fixed />
-      <div className="h-screen overflow-y-auto bg-[#f8f8f8] pt-16">
-        {/* Same fixed-height rationale as PartsGallery.tsx: 727x54 text
-            node, so the grid's margin-top below is deterministic
-            (197 - 146 - 54 = -3), not dependent on the browser's own text
-            measurement. */}
+      <div className="h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] pt-16">
+        {/* Same fixed-width/height rationale as PartsGallery.tsx: 727x54
+            text node, fixed (not max-width) so it never re-wraps narrower
+            and overflows into the grid below as the viewport shrinks. */}
         <div
-          className="mt-[82px] h-[54px] max-w-[727px] ml-[50px] text-[13px] text-[#696969] capitalize leading-[1.5]"
+          className="mt-[82px] h-[54px] w-[727px] ml-[50px] text-[13px] text-[#696969] capitalize leading-[1.5]"
         >
           <p>{STATEMENT_LINE_1}</p>
           <p>{STATEMENT_LINE_2}</p>
@@ -107,6 +109,8 @@ export default function FurnitureGallery() {
         <div
           className="figma-canvas-frame mt-[-3px]"
           style={{
+            marginLeft: px(GRID_X_OFFSET),
+            width: `calc(100% - ${px(GRID_X_OFFSET)})`,
             ["--fc-width" as string]: px(CANVAS_WIDTH),
             ["--fc-height" as string]: px(CANVAS_HEIGHT),
           }}
@@ -114,7 +118,8 @@ export default function FurnitureGallery() {
           <div className="figma-canvas-scaler">
             <div className="figma-canvas-content">
               {furnitureGallery.map((item, index) => {
-                const [x, yRaw, w, h] = TILE_GEOM[index];
+                const [xRaw, yRaw, w, h] = TILE_GEOM[index];
+                const x = xRaw - GRID_X_OFFSET;
                 const y = yRaw - GRID_Y_OFFSET;
                 const isHovered = hoveredId === item.id;
 
@@ -172,7 +177,7 @@ export default function FurnitureGallery() {
                 key={year}
                 className="absolute text-[13px] text-[#6f6f6f] capitalize leading-relaxed"
                 style={{
-                  left: px(51.97),
+                  left: px(51.97 - GRID_X_OFFSET),
                   top: cqw(y - GRID_Y_OFFSET),
                 }}
               >

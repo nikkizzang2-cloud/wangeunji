@@ -27,7 +27,12 @@ const ebGaramond = EB_Garamond({ subsets: ["latin"], weight: "400" });
 // y below so the grid canvas's local origin is the grid's own top-left tile,
 // not the page's. The fixed header/statement/gap above it are rendered
 // separately, in plain (non-scaling) flow — see the JSX below.
-const CANVAS_WIDTH = 1920;
+// Left margin (Figma x=50, same as the header/statement's fixed 50px) is
+// kept out of the scaled canvas entirely — see GRID_X_OFFSET below — so the
+// grid's left edge always lines up with them instead of drifting as the
+// canvas scales (reported as "왼쪽 시각점이 일치해").
+const GRID_X_OFFSET = 50;
+const CANVAS_WIDTH = 1920 - GRID_X_OFFSET;
 const GRID_Y_OFFSET = 197;
 // Grid canvas height = last tile's bottom edge (Rectangle 53: 6173.92+255),
 // minus GRID_Y_OFFSET — trims the trailing blank space that used to hold the
@@ -126,14 +131,14 @@ export default function PartsGallery() {
   return (
     <>
       <MainSideNav fixed />
-      <div className="h-screen overflow-y-auto bg-[#f8f8f8] pt-16">
-        {/* Figma's text node is 727x54 (23:1081) — fixed to that exact
-            height so the grid's margin-top below is a deterministic
-            calculation (197 - 146 - 54 = -3), not dependent on how the
-            browser happens to wrap/measure this text. 54px comfortably
-            fits the 2 lines at 13px/1.5 leading, so nothing clips. */}
+      <div className="h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] pt-16">
+        {/* Figma's text node is 727x54 (23:1081) — fixed width (not
+            max-width) and height, per the "텍스트 레이어는 크기·비율 고정"
+            responsive rule, so it always wraps into exactly the same 2
+            lines regardless of viewport width instead of re-wrapping
+            narrower and overflowing its 54px box into the grid below. */}
         <div
-          className="mt-[82px] h-[54px] max-w-[727px] ml-[50px] text-[13px] text-[#696969] capitalize leading-[1.5]"
+          className="mt-[82px] h-[54px] w-[727px] ml-[50px] text-[13px] text-[#696969] capitalize leading-[1.5]"
         >
           <p>{STATEMENT_LINE_1}</p>
           <p>{STATEMENT_LINE_2}</p>
@@ -142,6 +147,8 @@ export default function PartsGallery() {
         <div
           className="figma-canvas-frame mt-[-3px]"
           style={{
+            marginLeft: px(GRID_X_OFFSET),
+            width: `calc(100% - ${px(GRID_X_OFFSET)})`,
             ["--fc-width" as string]: px(CANVAS_WIDTH),
             ["--fc-height" as string]: px(CANVAS_HEIGHT),
           }}
@@ -149,7 +156,8 @@ export default function PartsGallery() {
           <div className="figma-canvas-scaler">
             <div className="figma-canvas-content">
               {partsGallery.map((item, index) => {
-                const [x, yRaw, w, h] = TILE_GEOM[index];
+                const [xRaw, yRaw, w, h] = TILE_GEOM[index];
+                const x = xRaw - GRID_X_OFFSET;
                 const y = yRaw - GRID_Y_OFFSET;
                 const isHovered = hoveredId === item.id;
                 const isInstagram = item.instagramUrl !== null;

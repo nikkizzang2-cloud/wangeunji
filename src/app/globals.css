@@ -62,9 +62,14 @@ body {
  * viewport width (no reflow, no horizontal scroll — see PartsGallery.tsx /
  * CLAUDE.md "배치/크기 정확도") — the frame's children keep their real,
  * absolute px positions from get_metadata, and the whole frame is scaled
- * down/up uniformly to fit the available width, like an image with
+ * down uniformly to fit the available width, like an image with
  * object-fit: contain. Uses container query units so the scale factor is
  * pure CSS (no JS, no resize listeners, no flash on load).
+ *
+ * Capped at 1 (`min(1, ...)`) — above the frame's native width the canvas
+ * stays at its real Figma size instead of stretching larger, since a
+ * viewport wider than the 1920px design has no upper bound otherwise
+ * (reported as "1920px 때도... 훨씬 크다").
  *
  * Usage: three nested elements —
  *   <div class="figma-canvas-frame" style="--fc-width:1920px; --fc-height:7180px">
@@ -76,12 +81,13 @@ body {
 .figma-canvas-frame {
   container-type: inline-size;
   width: 100%;
+  --fc-scale: min(1, calc(100cqw / var(--fc-width)));
 }
 
 .figma-canvas-scaler {
   position: relative;
   overflow: hidden;
-  height: calc(var(--fc-height) * (100cqw / var(--fc-width)));
+  height: calc(var(--fc-height) * var(--fc-scale));
 }
 
 .figma-canvas-content {
@@ -90,6 +96,6 @@ body {
   top: 0;
   width: var(--fc-width);
   height: var(--fc-height);
-  transform: scale(calc(100cqw / var(--fc-width)));
+  transform: scale(var(--fc-scale));
   transform-origin: top left;
 }
