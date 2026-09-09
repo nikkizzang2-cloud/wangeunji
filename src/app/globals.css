@@ -1,7 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
+  /* Matches the bg-[#f8f8f8] every page content area uses (PartsGallery,
+     FurnitureGallery, /info) — TopBar has no background of its own (see
+     TopBar.tsx), so it shows this through. Keeping them the same color
+     avoids a visible white strip behind the transparent header. */
+  --background: #f8f8f8;
   --foreground: #171717;
 }
 
@@ -49,4 +53,43 @@ body {
     top: var(--fy);
     width: var(--fw, auto);
   }
+}
+
+/*
+ * Figma fixed-canvas scaling.
+ *
+ * For a page that must reproduce a Figma frame's exact composition at any
+ * viewport width (no reflow, no horizontal scroll — see PartsGallery.tsx /
+ * CLAUDE.md "배치/크기 정확도") — the frame's children keep their real,
+ * absolute px positions from get_metadata, and the whole frame is scaled
+ * down/up uniformly to fit the available width, like an image with
+ * object-fit: contain. Uses container query units so the scale factor is
+ * pure CSS (no JS, no resize listeners, no flash on load).
+ *
+ * Usage: three nested elements —
+ *   <div class="figma-canvas-frame" style="--fc-width:1920px; --fc-height:7180px">
+ *     <div class="figma-canvas-scaler">
+ *       <div class="figma-canvas-content"> ...absolutely-positioned children... </div>
+ *     </div>
+ *   </div>
+ */
+.figma-canvas-frame {
+  container-type: inline-size;
+  width: 100%;
+}
+
+.figma-canvas-scaler {
+  position: relative;
+  overflow: hidden;
+  height: calc(var(--fc-height) * (100cqw / var(--fc-width)));
+}
+
+.figma-canvas-content {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--fc-width);
+  height: var(--fc-height);
+  transform: scale(calc(100cqw / var(--fc-width)));
+  transform-origin: top left;
 }

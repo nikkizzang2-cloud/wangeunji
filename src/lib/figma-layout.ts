@@ -33,3 +33,23 @@ export function createFigmaGeom(frameWidth: number, topBarHeight: number) {
     } as CSSProperties;
   };
 }
+
+/** Formats a number as a px length string, e.g. `px(64)` -> `"64px"`. */
+export function px(value: number) {
+  return `${value}px`;
+}
+
+/**
+ * Converts a raw Figma px value (against the 1920-wide `/main` frame) into a
+ * CSS length that scales with a fixed-width ancestor's inline size via
+ * container query units — `100cqw` resolves against the nearest
+ * `container-type: inline-size` ancestor's own width (the `.figma-canvas-*`
+ * scaling container — see globals.css). Used to track an element to the
+ * *scaled* position of something inside that canvas (e.g. FurnitureGallery's
+ * year labels, which stay fixed-size but must still line up with a
+ * proportionally-shrinking row of tiles) without the element itself living
+ * inside the transformed canvas tree.
+ */
+export function cqw(figmaPx: number) {
+  return `calc(100cqw * (${figmaPx} / 1920))`;
+}
