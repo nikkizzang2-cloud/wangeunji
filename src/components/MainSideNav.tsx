@@ -13,6 +13,16 @@ const NAV_ITEMS = [
   { label: "parts", href: "/main/parts", y: 221 },
 ] as const;
 
+// Below MOBILE_BREAKPOINT (800px, see TopBar.tsx), the mobile Figma frames
+// ("main.parts mobile" 95:2244, "parts.funiture mobile" 95:2340) place this
+// nav at x=682 (right edge at 760, i.e. 40px from the 800px frame's own
+// right edge) instead of desktop's x=1764 — not a scaled-down copy of the
+// desktop numbers.
+const MOBILE_NAV_ITEMS = [
+  { label: "furniture", href: "/main/furniture", y: 301 },
+  { label: "parts", href: "/main/parts", y: 319 },
+] as const;
+
 type MainSideNavProps = {
   // parts/page.tsx renders its whole page as a fixed 1920px-wide Figma
   // canvas (see PartsGallery.tsx / CLAUDE.md "배치/크기 정확도"), so this nav
@@ -44,25 +54,55 @@ export default function MainSideNav({ pinned = false, fixed = false }: MainSideN
 
   if (fixed) {
     return (
-      <div className="figma-fixed-scale pointer-events-none fixed inset-x-0 top-0 z-30">
-        <div className="figma-fixed-scale-inner">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`pointer-events-auto absolute text-right capitalize ${
-                pathname === item.href ? "font-bold" : ""
-              }`}
-              style={{
-                left: px(1764),
-                top: px(item.y),
-                width: px(78),
-                fontSize: px(13),
-              }}
-            >
-              {item.label}
-            </Link>
-          ))}
+      <div className="pointer-events-none fixed inset-x-0 top-0 z-30">
+        <div
+          className="figma-fixed-scale hidden h-full min-[800px]:block"
+          style={{ ["--ffs-width" as string]: px(1920) }}
+        >
+          <div className="figma-fixed-scale-inner">
+            {NAV_ITEMS.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`pointer-events-auto absolute text-right capitalize ${
+                  pathname === item.href ? "font-bold" : ""
+                }`}
+                style={{
+                  left: px(1764),
+                  top: px(item.y),
+                  width: px(78),
+                  fontSize: px(13),
+                }}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        <div
+          className="figma-fixed-scale h-full min-[800px]:hidden"
+          style={{ ["--ffs-width" as string]: px(800) }}
+        >
+          <div className="figma-fixed-scale-inner">
+            {MOBILE_NAV_ITEMS.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`pointer-events-auto absolute text-right capitalize ${
+                  pathname === item.href ? "font-bold" : ""
+                }`}
+                style={{
+                  left: px(682),
+                  top: px(item.y),
+                  width: px(78),
+                  fontSize: px(13),
+                }}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
     );

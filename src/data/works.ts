@@ -49,7 +49,7 @@ const PARTS_COUNT = 53;
 // (renamed from "Rectangle N.jpg", see /Users/isihyeon/Documents/eunji/image/main/parts/).
 // Rectangle 43 and 53 are missing from the delivered image set (53 is
 // intentionally left empty) — those two slots stay imageless (null).
-const PARTS_RECTANGLE_NUMBERS = [
+export const PARTS_RECTANGLE_NUMBERS = [
   1, 3, 4, 2, 7, 5, 6, 8, 9, 10, 11, 12, 14, 15, 13, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
   27, 28, 29, 31, 30, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 46, 47, 45, 48, 49, 50,
   51, 52, 53,

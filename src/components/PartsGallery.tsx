@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Crimson_Text, EB_Garamond } from "next/font/google";
 import { useState } from "react";
-import { partsGallery } from "@/data/works";
+import { partsGallery, PARTS_RECTANGLE_NUMBERS, type GalleryItem } from "@/data/works";
 import { px } from "@/lib/figma-layout";
 import MainSideNav from "./MainSideNav";
 
@@ -121,121 +121,266 @@ const STATEMENT_LINE_1 =
 const STATEMENT_LINE_2 =
   "transforming the most personal functions into universal experiences.";
 
-export default function PartsGallery() {
+// Same hover/tap info layer for both desktop (hover) and mobile (tap) —
+// "호버시 뜨는 정보는 기존의 텍스트 박스와 동일한 형식으로" — identical
+// markup/sizes, just triggered by a different interaction.
+function HoverInfo({ item }: { item: GalleryItem }) {
+  if (!item.partsInfo) return null;
+  return (
+    // Anchored bottom-left, margin from the tile edges (not the Figma
+    // frame) so it holds position at every tile size; `right-[13px]` lets
+    // long "Type:" descriptions wrap instead of overflowing narrow tiles,
+    // since Figma only gave per-instance fixed widths. Items with a
+    // Type/dimensions line get more bottom margin (19px) than name-only
+    // items (17px).
+    <div
+      className={`pointer-events-none absolute left-[13px] right-[13px] flex flex-col text-white ${
+        item.partsInfo.type ? "bottom-[19px]" : "bottom-[17px]"
+      }`}
+    >
+      <p className={`${crimsonText.className} mb-[7px] text-[15px] leading-[normal] whitespace-nowrap`}>
+        {item.partsInfo.number}
+      </p>
+      <div className="capitalize text-[20px] leading-[0] tracking-[-0.6px]">
+        <p className="leading-[1.2]">Parts: {item.partsInfo.name}</p>
+        {item.partsInfo.type && <p className="leading-[1.2]">Type: {item.partsInfo.type}</p>}
+      </div>
+      {item.partsInfo.dimensions && (
+        <p
+          className={`${ebGaramond.className} mt-1 whitespace-pre-line lowercase text-[13px] leading-none tracking-[-0.39px]`}
+        >
+          {item.partsInfo.dimensions}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function DesktopPartsGallery() {
   const [hoveredId, setHoveredId] = useState<number | null>(null);
 
   return (
-    <>
-      <MainSideNav fixed />
-      <div className="h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8]">
-        <div
-          className="figma-canvas-frame"
-          style={{
-            ["--fc-width" as string]: px(CANVAS_WIDTH),
-            ["--fc-height" as string]: px(CANVAS_HEIGHT),
-          }}
-        >
-          <div className="figma-canvas-scaler">
-            <div className="figma-canvas-content">
-              <div
-                className="absolute text-[13px] text-[#696969] capitalize leading-[1.5]"
-                style={{ left: px(50), top: px(146), width: px(727), height: px(54) }}
-              >
-                <p>{STATEMENT_LINE_1}</p>
-                <p>{STATEMENT_LINE_2}</p>
-              </div>
-
-              {partsGallery.map((item, index) => {
-                const [x, y, w, h] = TILE_GEOM[index];
-                const isHovered = hoveredId === item.id;
-                const isInstagram = item.instagramUrl !== null;
-
-                const content = (
-                  <div
-                    className="absolute overflow-hidden bg-neutral-200"
-                    style={{ left: px(x), top: px(y), width: px(w), height: px(h) }}
-                    onMouseEnter={() => setHoveredId(item.id)}
-                    onMouseLeave={() =>
-                      setHoveredId((current) => (current === item.id ? null : current))
-                    }
-                  >
-                    {item.image && (
-                      <Image
-                        src={
-                          !isInstagram && isHovered && item.hoverImage
-                            ? item.hoverImage
-                            : item.image
-                        }
-                        alt={item.title}
-                        fill
-                        className={`object-cover transition-[filter] duration-200 ${
-                          isInstagram && isHovered ? "brightness-50" : ""
-                        }`}
-                      />
-                    )}
-                    {isHovered && item.partsInfo && (
-                      // Anchored bottom-left, margin from the tile edges (not
-                      // the Figma frame) so it holds position at every tile
-                      // size; `right-[13px]` lets long "Type:" descriptions
-                      // wrap instead of overflowing narrow tiles, since Figma
-                      // only gave per-instance fixed widths. Items with a
-                      // Type/dimensions line get more bottom margin (19px) than
-                      // name-only items (17px).
-                      <div
-                        className={`absolute left-[13px] right-[13px] flex flex-col text-white ${
-                          item.partsInfo.type ? "bottom-[19px]" : "bottom-[17px]"
-                        }`}
-                      >
-                        <p
-                          className={`${crimsonText.className} mb-[7px] text-[15px] leading-[normal] whitespace-nowrap`}
-                        >
-                          {item.partsInfo.number}
-                        </p>
-                        <div className="capitalize text-[20px] leading-[0] tracking-[-0.6px]">
-                          <p className="leading-[1.2]">Parts: {item.partsInfo.name}</p>
-                          {item.partsInfo.type && (
-                            <p className="leading-[1.2]">Type: {item.partsInfo.type}</p>
-                          )}
-                        </div>
-                        {item.partsInfo.dimensions && (
-                          <p
-                            className={`${ebGaramond.className} mt-1 whitespace-pre-line lowercase text-[13px] leading-none tracking-[-0.39px]`}
-                          >
-                            {item.partsInfo.dimensions}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-
-                return item.slug ? (
-                  <Link key={item.id} href={`/caption/${item.slug}`}>
-                    {content}
-                  </Link>
-                ) : (
-                  <a key={item.id} href={item.instagramUrl!} target="_blank" rel="noreferrer">
-                    {content}
-                  </a>
-                );
-              })}
-
-              <div
-                className="absolute"
-                style={{ left: px(925), top: px(6608.28125), width: px(69), height: px(87) }}
-              >
-                <Image src="/main/logo.png" alt="" fill className="object-contain" />
-              </div>
-              <p
-                className="absolute whitespace-nowrap text-[10px] text-[#818181]"
-                style={{ left: px(933), top: px(6688.28125), width: px(59) }}
-              >
-                Eunji Wang©
-              </p>
+    <div className="hidden h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] min-[800px]:block">
+      <div
+        className="figma-canvas-frame"
+        style={{
+          ["--fc-width" as string]: px(CANVAS_WIDTH),
+          ["--fc-height" as string]: px(CANVAS_HEIGHT),
+        }}
+      >
+        <div className="figma-canvas-scaler">
+          <div className="figma-canvas-content">
+            <div
+              className="absolute text-[13px] text-[#696969] capitalize leading-[1.5]"
+              style={{ left: px(50), top: px(146), width: px(727), height: px(54) }}
+            >
+              <p>{STATEMENT_LINE_1}</p>
+              <p>{STATEMENT_LINE_2}</p>
             </div>
+
+            {partsGallery.map((item, index) => {
+              const [x, y, w, h] = TILE_GEOM[index];
+              const isHovered = hoveredId === item.id;
+              const isInstagram = item.instagramUrl !== null;
+
+              const content = (
+                <div
+                  className="absolute overflow-hidden bg-neutral-200"
+                  style={{ left: px(x), top: px(y), width: px(w), height: px(h) }}
+                  onMouseEnter={() => setHoveredId(item.id)}
+                  onMouseLeave={() =>
+                    setHoveredId((current) => (current === item.id ? null : current))
+                  }
+                >
+                  {item.image && (
+                    <Image
+                      src={
+                        !isInstagram && isHovered && item.hoverImage ? item.hoverImage : item.image
+                      }
+                      alt={item.title}
+                      fill
+                      className={`object-cover transition-[filter] duration-200 ${
+                        isInstagram && isHovered ? "brightness-50" : ""
+                      }`}
+                    />
+                  )}
+                  {isHovered && <HoverInfo item={item} />}
+                </div>
+              );
+
+              return item.slug ? (
+                <Link key={item.id} href={`/caption/${item.slug}`}>
+                  {content}
+                </Link>
+              ) : (
+                <a key={item.id} href={item.instagramUrl!} target="_blank" rel="noreferrer">
+                  {content}
+                </a>
+              );
+            })}
+
+            <div
+              className="absolute"
+              style={{ left: px(925), top: px(6608.28125), width: px(69), height: px(87) }}
+            >
+              <Image src="/main/logo.png" alt="" fill className="object-contain" />
+            </div>
+            <p
+              className="absolute whitespace-nowrap text-[10px] text-[#818181]"
+              style={{ left: px(933), top: px(6688.28125), width: px(59) }}
+            >
+              Eunji Wang©
+            </p>
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Figma "main.parts mobile" (nodeId 95:2244) only placed 6 sample tiles (a
+// single column, left-aligned at x=45, 15px gaps — confirmed by their
+// widths/heights matching desktop's Rectangle 1-6 exactly) and asked for the
+// rest to be filled in the same way, "이미지 숫자 순서대로" (in rectangle
+// -number order, 1->53 — NOT partsGallery's array order, which is desktop's
+// visual/masonry order and doesn't run 1->53 sequentially). So this derives
+// each rectangle's own width/height from the already-correct desktop
+// TILE_GEOM (via PARTS_RECTANGLE_NUMBERS, which maps a partsGallery index to
+// its Figma "Rectangle N" identity) instead of re-transcribing 53 numbers by
+// hand, then stacks them in strict number order with a running Y cursor.
+const MOBILE_TILE_GAP = 15;
+const MOBILE_FIRST_TILE_TOP = 217;
+const MOBILE_TILE_X = 45;
+
+const RECTANGLE_WH_BY_NUMBER = new Map<number, [w: number, h: number]>();
+const ITEM_BY_RECTANGLE_NUMBER = new Map<number, GalleryItem>();
+PARTS_RECTANGLE_NUMBERS.forEach((number, index) => {
+  const [, , w, h] = TILE_GEOM[index];
+  RECTANGLE_WH_BY_NUMBER.set(number, [w, h]);
+  ITEM_BY_RECTANGLE_NUMBER.set(number, partsGallery[index]);
+});
+
+type MobileTile = { item: GalleryItem; x: number; y: number; w: number; h: number };
+
+const MOBILE_TILES: MobileTile[] = [];
+let mobileCursorY = MOBILE_FIRST_TILE_TOP;
+for (let number = 1; number <= PARTS_RECTANGLE_NUMBERS.length; number++) {
+  const wh = RECTANGLE_WH_BY_NUMBER.get(number);
+  const item = ITEM_BY_RECTANGLE_NUMBER.get(number);
+  if (!wh || !item) continue;
+  const [w, h] = wh;
+  MOBILE_TILES.push({ item, x: MOBILE_TILE_X, y: mobileCursorY, w, h });
+  mobileCursorY += h + MOBILE_TILE_GAP;
+}
+const MOBILE_LAST_TILE_BOTTOM = mobileCursorY - MOBILE_TILE_GAP;
+
+// Footer margin per explicit spec ("마지막 사각형과 위로 180px 아래로
+// 35px") — matches "parts.funiture mobile"'s own placed footer exactly
+// (logo top - last tile bottom = 180; canvas bottom - copyright bottom =
+// 35), so the same formula is reused here since /main/parts's footer
+// wasn't placed in Figma for this revision.
+const MOBILE_FOOTER_LOGO_Y = MOBILE_LAST_TILE_BOTTOM + 180;
+const MOBILE_FOOTER_COPYRIGHT_Y = MOBILE_FOOTER_LOGO_Y + 74;
+const MOBILE_CANVAS_WIDTH = 800;
+const MOBILE_CANVAS_HEIGHT = MOBILE_FOOTER_COPYRIGHT_Y + 15 + 35;
+
+function MobilePartsGallery() {
+  // No hover on touch devices: the first tap on a tile reveals the same
+  // info layer desktop shows on hover (without navigating); a second tap on
+  // the already-active tile lets the click through to actually navigate
+  // (caption page, or Instagram for the 36 uncaptioned tiles) — tapping a
+  // different tile just moves the "active" one, same single-value model as
+  // desktop's hoveredId.
+  const [activeId, setActiveId] = useState<number | null>(null);
+
+  const handleTap = (event: React.MouseEvent, id: number) => {
+    if (activeId !== id) {
+      event.preventDefault();
+      setActiveId(id);
+    }
+  };
+
+  return (
+    <div className="h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] min-[800px]:hidden">
+      <div
+        className="figma-canvas-frame"
+        style={{
+          ["--fc-width" as string]: px(MOBILE_CANVAS_WIDTH),
+          ["--fc-height" as string]: px(MOBILE_CANVAS_HEIGHT),
+        }}
+      >
+        <div className="figma-canvas-scaler">
+          <div className="figma-canvas-content">
+            <div
+              className="absolute text-[13px] text-[#696969] capitalize leading-[1.4]"
+              style={{ left: px(45), top: px(158), width: px(568) }}
+            >
+              <p>{STATEMENT_LINE_1}</p>
+              <p>{STATEMENT_LINE_2}</p>
+            </div>
+
+            {MOBILE_TILES.map(({ item, x, y, w, h }) => {
+              const isActive = activeId === item.id;
+              const isInstagram = item.instagramUrl !== null;
+
+              const content = (
+                <div
+                  className="absolute overflow-hidden bg-neutral-200"
+                  style={{ left: px(x), top: px(y), width: px(w), height: px(h) }}
+                  onClick={(event) => handleTap(event, item.id)}
+                >
+                  {item.image && (
+                    <Image
+                      src={
+                        !isInstagram && isActive && item.hoverImage ? item.hoverImage : item.image
+                      }
+                      alt={item.title}
+                      fill
+                      className={`object-cover transition-[filter] duration-200 ${
+                        isInstagram && isActive ? "brightness-50" : ""
+                      }`}
+                    />
+                  )}
+                  {isActive && <HoverInfo item={item} />}
+                </div>
+              );
+
+              return item.slug ? (
+                <Link key={item.id} href={`/caption/${item.slug}`}>
+                  {content}
+                </Link>
+              ) : (
+                <a key={item.id} href={item.instagramUrl!} target="_blank" rel="noreferrer">
+                  {content}
+                </a>
+              );
+            })}
+
+            <div
+              className="absolute"
+              style={{ left: px(368), top: px(MOBILE_FOOTER_LOGO_Y), width: px(64), height: px(81) }}
+            >
+              <Image src="/main/logo.png" alt="" fill className="object-contain" />
+            </div>
+            <p
+              className="absolute whitespace-nowrap text-[10px] text-[#818181]"
+              style={{ left: px(370), top: px(MOBILE_FOOTER_COPYRIGHT_Y), width: px(59) }}
+            >
+              Eunji Wang©
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function PartsGallery() {
+  return (
+    <>
+      <MainSideNav fixed />
+      <DesktopPartsGallery />
+      <MobilePartsGallery />
     </>
   );
 }
