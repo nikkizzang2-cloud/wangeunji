@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { CONTACT_EMAIL } from "@/lib/constants";
 import { px } from "@/lib/figma-layout";
 
@@ -37,12 +40,20 @@ const MOBILE_NAV = [
 // it since that height never changes; as the user scrolls, content passes
 // underneath and shows through the transparent background.
 export default function TopBar() {
+  // Explicit user brief: the caption page's nav text is a different fixed
+  // color (#b9b9b9) than everywhere else on the site — everything else
+  // (position/size/links) stays identical, so this is a single color
+  // override rather than a separate caption-specific header variant.
+  const pathname = usePathname();
+  const isCaptionPage = pathname?.startsWith("/caption/") ?? false;
+  const textColorClass = isCaptionPage ? "text-[#b9b9b9]" : "";
+
   return (
     <header className="fixed inset-x-0 top-0 z-40 h-16 overflow-hidden bg-transparent">
       <div className="relative hidden h-full min-[800px]:block">
         <Link
           href="/intro"
-          className="absolute font-bold uppercase"
+          className={`absolute font-bold uppercase ${textColorClass}`}
           style={{ left: px(35), top: px(25), fontSize: px(11) }}
         >
           Wang eun ji
@@ -51,7 +62,7 @@ export default function TopBar() {
           <Link
             key={item.href}
             href={item.href}
-            className="absolute lowercase"
+            className={`absolute lowercase ${textColorClass}`}
             style={{ left: px(item.left), top: px(25), fontSize: px(10) }}
           >
             {item.label}
@@ -59,7 +70,7 @@ export default function TopBar() {
         ))}
         <a
           href={`mailto:${CONTACT_EMAIL}`}
-          className="absolute lowercase"
+          className={`absolute lowercase ${textColorClass}`}
           style={{ left: px(343.90234375), top: px(25), fontSize: px(10) }}
         >
           contact
@@ -73,7 +84,7 @@ export default function TopBar() {
         <div className="figma-fixed-scale-inner">
           <Link
             href="/intro"
-            className="absolute font-bold uppercase"
+            className={`absolute font-bold uppercase ${textColorClass}`}
             style={{ left: px(45), top: px(25), fontSize: px(14.5) }}
           >
             Wang eun ji
@@ -82,7 +93,7 @@ export default function TopBar() {
             <Link
               key={item.href}
               href={item.href}
-              className="absolute lowercase"
+              className={`absolute lowercase ${textColorClass}`}
               style={{ left: px(item.left), top: px(25), fontSize: px(13.5) }}
             >
               {item.label}
@@ -90,7 +101,7 @@ export default function TopBar() {
           ))}
           <a
             href={`mailto:${CONTACT_EMAIL}`}
-            className="absolute lowercase"
+            className={`absolute lowercase ${textColorClass}`}
             style={{ left: px(373), top: px(25), fontSize: px(13.5) }}
           >
             contact

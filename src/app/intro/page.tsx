@@ -5,52 +5,48 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { px } from "@/lib/figma-layout";
 
-// Figma "intro" frame (get_metadata nodeId 43:43; 43:82 is a second frame
-// showing the same composition at the aligned/final position, used only as a
-// reference for how far "lock right2"/"lock right" travel). width=1920,
-// height=1080 — same reference frame TopBar/the /main pages use. Below
-// MOBILE_BREAKPOINT (800px, see TopBar.tsx), a separate "intro mobile" frame
-// (nodeId 95:2088, width=800, height=1532) is used instead — not just a
-// scaled-down copy of the desktop numbers (the lock pieces are relatively
+// Mobile (<800px, MOBILE_BREAKPOINT, see TopBar.tsx) uses a separate "intro
+// mobile" Figma frame (nodeId 95:2088, width=800, height=1532) — not just a
+// scaled-down copy of desktop's numbers (the lock pieces are relatively
 // bigger on mobile: lock-left is 100x134 there vs 114.53x153.35 on desktop,
-// a ~0.873 ratio, not the 800/1920=0.417 frame-width ratio).
+// a ~0.873 ratio, not the 800/1920=0.417 frame-width ratio). It still scales
+// down via `.figma-contain-scale` as its own viewport narrows below 800px —
+// unchanged, unaffected by the desktop change below.
+//
+// Desktop (>=800px) is now FIXED size, never scaling — explicit brief from
+// the user: "화면이 줄어들어도 가운데 락의 크기가 바뀌지않고, 그냥 정중앙에
+// 위치하면 돼" (as the screen shrinks, the center lock's size shouldn't
+// change, just stay centered). Numbers below are node 117:243 (the "lock"
+// group inside 117:178, a 1512px-reference frame) — same relative
+// proportions/crops as the old 1920-frame numbers (117:243 is a
+// proportionally-scaled copy, not a new design), just read as LOCAL
+// coordinates within the lock's own small bounding box (0,0 to
+// DESKTOP_LOCK_BOX's width/height) instead of a position within a huge
+// 1920x1080 canvas — since there's no longer any canvas to scale, only this
+// small fixed box, centered via plain flexbox (`h-dvh flex items-center
+// justify-center`, no `.figma-contain-scale`/cqw involved at all).
 //
 // Both variants render at all times (`hidden`/`min-[800px]:hidden` toggles
 // which is visible) rather than picking one in JS, so there's no
 // hydration-mismatch flash — same approach as PartsGallery.tsx's canvas vs.
 // TopBar.tsx's two nav blocks.
-//
-// Scaled via `.figma-contain-scale` (globals.css) — pure CSS, both axes
-// (object-fit: contain for the whole canvas, since this is a no-scroll page
-// and a viewport wider-than-the-canvas-aspect-ratio would clip a
-// width-only scale's bottom edge). This used to be a JS hook
-// (`useContainScale`) reading `window.innerWidth`/`innerHeight`, which
-// turned out unreliable in KakaoTalk's in-app browser — see globals.css's
-// `.figma-contain-scale` comment for the full story ("잠금장치 사이즈가 너무
-// 커"). The lock composition sits centered in Figma's own frame (both
-// desktop and mobile), so centering the whole scaled canvas via flexbox
-// keeps it centered on screen at any viewport — the explicit requirement for
-// the mobile variant ("가운데 잠금 여는 요소는 무조건 화면의 중앙에").
-const DESKTOP_CANVAS = { width: 1920, height: 1080 };
+const DESKTOP_LOCK_BOX = { width: 260.0003662109375, height: 152.17530822753906 };
 const MOBILE_CANVAS = { width: 800, height: 1532 };
 
 // "lock right2"/"lock right" move together as one rigid group when dragged.
-// Desktop's 43:82 shows their resting (aligned) position — the two nodes' x
-// deltas between 43:43 and 43:82 agree (~98.109px), so that's the total
-// leftward travel distance in that frame's raw-px space.
-//
-// There's no equivalent second "aligned" frame for mobile, so its drag
-// distance is derived by scaling the desktop value by the lock piece's own
-// size ratio (mobile lock-left width 118.452... / desktop lock-left width
-// 114.52941... ≈ 1.034) rather than the frame-width ratio (800/1920 ≈
-// 0.417) — the interlocking geometry should scale with the drawn object
-// itself, not the frame. Approximate pending a real mobile "aligned"
-// reference frame; easy to correct if the drag distance feels off.
-const DESKTOP_DRAG_DISTANCE_PX = 98.109130859375;
-const DESKTOP_ALIGN_THRESHOLD_PX = 15;
+// The old 1920-frame desktop had a second "aligned position" reference frame
+// (43:82) to read the travel distance off directly (~98.109px in that
+// frame's raw-px space); 117:178/117:243 has no equivalent, so — same
+// approach already used for MOBILE_DRAG_DISTANCE_PX below — that old value
+// is scaled by the lock piece's own size ratio between the two frames
+// (new lock-left width 90.235... / old lock-left width 114.529... ≈
+// 0.78788) rather than by the frame-width ratio, since the interlocking
+// geometry should scale with the drawn object itself, not the frame.
+const DESKTOP_DRAG_DISTANCE_PX = 98.109130859375 * (90.23545837402344 / 114.52941131591797); // 77.298
+const DESKTOP_ALIGN_THRESHOLD_PX = 15 * (90.23545837402344 / 114.52941131591797); // 11.818
 const MOBILE_LOCK_SCALE = 118.45237731933594 / 114.52941131591797;
-const MOBILE_DRAG_DISTANCE_PX = DESKTOP_DRAG_DISTANCE_PX * MOBILE_LOCK_SCALE;
-const MOBILE_ALIGN_THRESHOLD_PX = DESKTOP_ALIGN_THRESHOLD_PX * MOBILE_LOCK_SCALE;
+const MOBILE_DRAG_DISTANCE_PX = 98.109130859375 * MOBILE_LOCK_SCALE;
+const MOBILE_ALIGN_THRESHOLD_PX = 15 * MOBILE_LOCK_SCALE;
 
 type LockGeom = {
   lockLeft: { x: number; y: number; w: number; h: number };
@@ -61,11 +57,13 @@ type LockGeom = {
   alignThreshold: number;
 };
 
+// Local coordinates within DESKTOP_LOCK_BOX (i.e. each piece's own raw
+// Figma x/y minus the "lock" group's own x=626/y=464) — node 117:243.
 const DESKTOP_GEOM: LockGeom = {
-  lockLeft: { x: 799.499755859375, y: 482.7939453125, w: 114.52941131591797, h: 153.35293579101562 },
-  lockLeft1: { x: 813.499755859375, y: 529, w: 85, h: 64 },
-  lockRight2: { x: 914.109130859375, y: 443, w: 215.39002990722656, h: 152.43936157226562 },
-  lockRight: { x: 933.4411010742188, y: 475.029296875, w: 195.08824157714844, h: 94.14705657958984 },
+  lockLeft: { x: 0, y: 31.352094650268555, w: 90.23545837402344, h: 120.82374572753906 },
+  lockLeft1: { x: 11.030323028564453, y: 67.75769805908203, w: 66.96981811523438, h: 50.42433547973633 },
+  lockRight2: { x: 90.2984619140625, y: 0, w: 169.70155334472656, h: 120.10395812988281 },
+  lockRight: { x: 105.52978515625, y: 25.23525047302246, w: 153.7061767578125, h: 74.17660522460938 },
   dragDistance: DESKTOP_DRAG_DISTANCE_PX,
   alignThreshold: DESKTOP_ALIGN_THRESHOLD_PX,
 };
@@ -84,11 +82,16 @@ function LockComposition({
   canvasWidth,
   canvasHeight,
   geom,
+  scale = true,
 }: {
   className: string;
   canvasWidth: number;
   canvasHeight: number;
   geom: LockGeom;
+  // false: never scales (fixed px size always), just centered via plain
+  // flexbox — no `.figma-contain-scale` involved. See DESKTOP_LOCK_BOX's
+  // comment. Defaults to true (mobile's existing scaling behavior).
+  scale?: boolean;
 }) {
   const router = useRouter();
   const dragElRef = useRef<HTMLDivElement | null>(null);
@@ -204,6 +207,85 @@ function LockComposition({
     };
   }, [geom, router]);
 
+  const lockPieces = (
+    <>
+      <div
+        className="absolute bg-[#454545]"
+        style={{
+          left: px(geom.lockLeft.x),
+          top: px(geom.lockLeft.y),
+          width: px(geom.lockLeft.w),
+          height: px(geom.lockLeft.h),
+        }}
+      />
+      <div
+        className="absolute overflow-hidden"
+        style={{
+          left: px(geom.lockLeft1.x),
+          top: px(geom.lockLeft1.y),
+          width: px(geom.lockLeft1.w),
+          height: px(geom.lockLeft1.h),
+        }}
+      >
+        <Image src="/intro/lock-left1.png" alt="" fill className="object-cover" />
+      </div>
+
+      <div
+        ref={dragElRef}
+        className="absolute cursor-grab touch-none select-none active:cursor-grabbing"
+        style={{
+          left: px(geom.lockRight2.x),
+          top: px(geom.lockRight2.y),
+          width: px(geom.lockRight2.w),
+          height: px(geom.lockRight2.h),
+          transform: `translateX(${px(dragX)})`,
+          transition: isDragging ? "none" : "transform 200ms ease",
+        }}
+      >
+        {/* Figma applies a manual crop/zoom transform to each image
+                (non-uniform %, not a simple object-fit:cover), so a plain
+                <img> with the same percentages is the only faithful
+                reproduction — next/image's `fill` forces 100%/100%. */}
+        <div className="absolute inset-0 overflow-hidden opacity-44">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/intro/lock-right2.png"
+            alt=""
+            draggable={false}
+            className="absolute left-[-64.18%] top-[-27.94%] h-[194.74%] w-[183.67%] max-w-none"
+          />
+        </div>
+        <div
+          className="absolute overflow-hidden opacity-80"
+          style={{
+            left: px(geom.lockRight.x - geom.lockRight2.x),
+            top: px(geom.lockRight.y - geom.lockRight2.y),
+            width: px(geom.lockRight.w),
+            height: px(geom.lockRight.h),
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/intro/lock-right.png"
+            alt=""
+            draggable={false}
+            className="absolute left-[-73.35%] top-[-63.39%] h-[268.4%] w-[173.14%] max-w-none"
+          />
+        </div>
+      </div>
+    </>
+  );
+
+  if (!scale) {
+    return (
+      <div className={`relative flex h-dvh items-center justify-center overflow-hidden bg-[#f8f8f8] ${className}`}>
+        <div className="relative shrink-0" style={{ width: px(canvasWidth), height: px(canvasHeight) }}>
+          {lockPieces}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`figma-contain-scale relative h-dvh items-center justify-center overflow-hidden bg-[#f8f8f8] ${className}`}
@@ -216,70 +298,7 @@ function LockComposition({
         className="figma-contain-scale-inner relative shrink-0"
         style={{ width: px(canvasWidth), height: px(canvasHeight) }}
       >
-        <div
-          className="absolute bg-[#454545]"
-          style={{
-            left: px(geom.lockLeft.x),
-            top: px(geom.lockLeft.y),
-            width: px(geom.lockLeft.w),
-            height: px(geom.lockLeft.h),
-          }}
-        />
-        <div
-          className="absolute overflow-hidden"
-          style={{
-            left: px(geom.lockLeft1.x),
-            top: px(geom.lockLeft1.y),
-            width: px(geom.lockLeft1.w),
-            height: px(geom.lockLeft1.h),
-          }}
-        >
-          <Image src="/intro/lock-left1.png" alt="" fill className="object-cover" />
-        </div>
-
-        <div
-          ref={dragElRef}
-          className="absolute cursor-grab touch-none select-none active:cursor-grabbing"
-          style={{
-            left: px(geom.lockRight2.x),
-            top: px(geom.lockRight2.y),
-            width: px(geom.lockRight2.w),
-            height: px(geom.lockRight2.h),
-            transform: `translateX(${px(dragX)})`,
-            transition: isDragging ? "none" : "transform 200ms ease",
-          }}
-        >
-          {/* Figma applies a manual crop/zoom transform to each image
-                  (non-uniform %, not a simple object-fit:cover), so a plain
-                  <img> with the same percentages is the only faithful
-                  reproduction — next/image's `fill` forces 100%/100%. */}
-          <div className="absolute inset-0 overflow-hidden opacity-44">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/intro/lock-right2.png"
-              alt=""
-              draggable={false}
-              className="absolute left-[-64.18%] top-[-27.94%] h-[194.74%] w-[183.67%] max-w-none"
-            />
-          </div>
-          <div
-            className="absolute overflow-hidden opacity-80"
-            style={{
-              left: px(geom.lockRight.x - geom.lockRight2.x),
-              top: px(geom.lockRight.y - geom.lockRight2.y),
-              width: px(geom.lockRight.w),
-              height: px(geom.lockRight.h),
-            }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/intro/lock-right.png"
-              alt=""
-              draggable={false}
-              className="absolute left-[-73.35%] top-[-63.39%] h-[268.4%] w-[173.14%] max-w-none"
-            />
-          </div>
-        </div>
+        {lockPieces}
       </div>
     </div>
   );
@@ -290,9 +309,10 @@ export default function IntroPage() {
     <>
       <LockComposition
         className="hidden min-[800px]:flex"
-        canvasWidth={DESKTOP_CANVAS.width}
-        canvasHeight={DESKTOP_CANVAS.height}
+        canvasWidth={DESKTOP_LOCK_BOX.width}
+        canvasHeight={DESKTOP_LOCK_BOX.height}
         geom={DESKTOP_GEOM}
+        scale={false}
       />
       <LockComposition
         className="flex min-[800px]:hidden"

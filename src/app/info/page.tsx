@@ -1,5 +1,6 @@
 import Image from "next/image";
 import localFont from "next/font/local";
+import type { ReactNode } from "react";
 import { px } from "@/lib/figma-layout";
 
 // Figma "info" frame (get_metadata nodeId 16:2 / 48:105): width=1920,
@@ -59,24 +60,87 @@ const INTRO_VIEWPORT_NATIVE = 1512;
 const INTRO_IMAGE_NATIVE_W = 592.9234619140625;
 const INTRO_IMAGE_NATIVE_H = 407.8809509277344;
 const INTRO_IMAGE_FLOOR_W = 440;
-const INTRO_IMAGE_LABEL_GAP = 93.7034912109375; // image right edge -> label column, always fixed
-const INTRO_LABEL_COL_W = 68;
+const INTRO_IMAGE_LABEL_GAP_NATIVE = 93.7034912109375; // image right edge -> label column
+const INTRO_IMAGE_LABEL_GAP_FLOOR = 53;
+const INTRO_LABEL_COL_W = 53.54421615600586; // "introduction", the longest label — node 117:139's own width
+// Content column block widths (node 117:139) — each text block keeps its
+// own native width/font-size pair so its wrap points (and therefore its
+// rendered height, which the vertical gaps below assume) match Figma.
+const INTRO_ENGLISH_PARA_W = 434;
+const INTRO_KOREAN_PARA_W = 429.9285583496094;
+const INTRO_EXHIBITION_W = 472.448974609375; // the widest content block — governs the row's own right edge
+const INTRO_CONTACT_W = 158;
 const INTRO_LABEL_CONTENT_GAP_NATIVE = 176.38156509399414; // label column -> content column
 const INTRO_LABEL_CONTENT_GAP_FLOOR = 38;
-// Viewport width at which the label<->content gap bottoms out at its floor.
-const INTRO_STAGE2_START =
+const INTRO_RIGHT_MARGIN_FLOOR = 40; // viewport right edge -> content column's right edge
+
+// Two shrink phases:
+//   A. label<->content gap: 176.38 -> 38, alone (native width down to
+//      PHASE_B_START) — this one stays sequential/first, per the user's own
+//      "텍스트박스끼리 38px 줄고나서" ("after the text boxes finish").
+//   B. image width (592.92->440), image<->label gap (93.70->53), and the
+//      row's own right margin (viewport - row's right edge, ~123->40) all
+//      move TOGETHER, in lockstep, across the SAME viewport range — not
+//      sequentially. An earlier revision did these three one after another
+//      (each fully bottoming out before the next started), which read as
+//      distinctly staggered/jerky while resizing ("덜그럭거리는 느낌") — three
+//      separate "now THIS moves" handoffs. Moving them on one shared linear
+//      progress fraction removes two of those three handoffs; the algebra
+//      guarantees the right margin comes out correctly interpolated with NO
+//      clamp() of its own, since (viewport - rowWidth) is linear whenever
+//      viewport and rowWidth both are: right margin's own start (123, at
+//      PHASE_B_START) and end (40, at PHASE_B_END) values are exactly what
+//      they'd be regardless of path, so this doesn't change PHASE_B_END.
+const INTRO_PHASE_B_START =
   INTRO_VIEWPORT_NATIVE - (INTRO_LABEL_CONTENT_GAP_NATIVE - INTRO_LABEL_CONTENT_GAP_FLOOR); // 1373.62
-// Viewport width at which the image also bottoms out (~1220.7) -> the
-// min-[1220px]/max-[1220px] Tailwind breakpoints below switch layouts —
-// Tailwind compiles `max-[1220px]` to `not (min-width: 1220px)` (strictly
-// < 1220px, not <=), so pairing it with `min-[1221px]` left a 1px gap at
-// exactly 1220px where neither layout showed (caught via browser preview).
+const INTRO_ROW_WIDTH_AT_FLOORS =
+  INTRO_IMAGE_FLOOR_W +
+  INTRO_IMAGE_LABEL_GAP_FLOOR +
+  INTRO_LABEL_COL_W +
+  INTRO_LABEL_CONTENT_GAP_FLOOR +
+  INTRO_EXHIBITION_W; // 1056.99
+// Where the row layout's right margin would hit its own 40px floor — below
+// this, switch to the stacked layout (min-[1097px]/max-[1097px] below —
+// paired on the SAME value since Tailwind compiles `max-[Npx]` to
+// `not (min-width: Npx)`, i.e. strictly < N — pairing it with `min-[N+1px]`
+// left a 1px gap at exactly N where neither layout showed (caught via
+// browser preview, same bug as the earlier 1220px breakpoint fix) —
+// same "no 1px gap" fix as the earlier min/max-width pairing bug).
+const INTRO_PHASE_B_END = INTRO_ROW_WIDTH_AT_FLOORS + INTRO_RIGHT_MARGIN_FLOOR; // 1096.99
+const INTRO_PHASE_B_RANGE = INTRO_PHASE_B_START - INTRO_PHASE_B_END; // 276.62 — shared denominator
+
 const INTRO_STACK_GAP = 95; // image bottom -> label/content row, stacked layout only
-const INTRO_STACK_MARGIN = 35; // left margin of the whole block, stacked layout only
+const INTRO_STACK_MARGIN = 0; // left margin of the image, stacked layout only
+const INTRO_STACK_TEXT_MARGIN = 40; // left margin of the label/content row, stacked layout only — NOT the same as the image's (reuses the row layout's own right-margin floor value, coincidentally)
 const INTRO_LOGO_GAP = 206; // content column bottom -> logo, both layouts — flow-positioned (not absolute px) so it never overlaps whichever layout is taller
+const INTRO_BOTTOM_PADDING = 25; // page bottom -> copyright text, matches PartsGallery/FurnitureGallery's footer
+
+// Footer group ("Group 264" equivalent) — same logo/copyright size and
+// local layout as PartsGallery.tsx/FurnitureGallery.tsx's own footer
+// (node 117:139's own "Group 264", w=54/h=68.087, text at x=6.26/y=62.6).
+// Those pages track a uniform `--fcol-scale` transform for `top`; /info has
+// no such transform (this block's height is real, unscaled text), so this
+// stays flow-positioned via INTRO_LOGO_GAP above instead of a calc() — but
+// the group's own internal layout, size, and horizontal centering
+// (`left:50vw` + `-translate-x-1/2`, viewport-relative rather than
+// parent-relative) match theirs exactly.
+const INTRO_FOOTER_LOGO = { w: 54, h: 68.08695983886719 };
+const INTRO_FOOTER_TEXT = { x: 6.26171875, y: 62.609375, w: 47 };
+const INTRO_FOOTER_GROUP_WIDTH = 54;
+// Taller than the logo image alone — the copyright text sits inside this
+// group as `position: absolute` (out of flow) at y=62.6, so without an
+// explicit height here the group's auto height stops at the logo's own
+// 68.087px and INTRO_BOTTOM_PADDING ends up measured ~7px short of the
+// text's real visual bottom (caught via browser preview).
+const INTRO_FOOTER_GROUP_HEIGHT = 74.609375;
 
 const introGapCss = `clamp(${px(INTRO_LABEL_CONTENT_GAP_FLOOR)}, calc(${px(INTRO_LABEL_CONTENT_GAP_NATIVE)} - (${px(INTRO_VIEWPORT_NATIVE)} - 100vw)), ${px(INTRO_LABEL_CONTENT_GAP_NATIVE)})`;
-const introImageWidthCss = `clamp(${px(INTRO_IMAGE_FLOOR_W)}, calc(${px(INTRO_IMAGE_NATIVE_W)} - (${px(INTRO_STAGE2_START)} - 100vw)), ${px(INTRO_IMAGE_NATIVE_W)})`;
+// Phase B: image width and image<->label gap both move on the SAME linear
+// progress fraction (PHASE_B_START - 100vw) / PHASE_B_RANGE — see the
+// constants block above for why this makes the row's right margin come out
+// correctly interpolated too, with no clamp() of its own.
+const introImageWidthCss = `clamp(${px(INTRO_IMAGE_FLOOR_W)}, calc(${px(INTRO_IMAGE_NATIVE_W)} - (${INTRO_IMAGE_NATIVE_W - INTRO_IMAGE_FLOOR_W}) * (${px(INTRO_PHASE_B_START)} - 100vw) / ${INTRO_PHASE_B_RANGE}), ${px(INTRO_IMAGE_NATIVE_W)})`;
+const introImageLabelGapCss = `clamp(${px(INTRO_IMAGE_LABEL_GAP_FLOOR)}, calc(${px(INTRO_IMAGE_LABEL_GAP_NATIVE)} - (${INTRO_IMAGE_LABEL_GAP_NATIVE - INTRO_IMAGE_LABEL_GAP_FLOOR}) * (${px(INTRO_PHASE_B_START)} - 100vw) / ${INTRO_PHASE_B_RANGE}), ${px(INTRO_IMAGE_LABEL_GAP_NATIVE)})`;
 
 type ExhibitionEntry = {
   year: string;
@@ -153,31 +217,44 @@ function ContactBlock({ fontSize }: { fontSize: number }) {
   );
 }
 
-const SECTION_LABEL_TEXT_CLASS = "text-[13px] font-normal capitalize text-[#656565]";
+const SECTION_LABEL_TEXT_CLASS = "text-[10px] font-normal capitalize text-[#656565]";
 
-// The label column + content column pair — identical in both layouts below,
-// only their horizontal gap (fixed vs. shrinking) and surrounding wrapper
-// differ, so this is shared to avoid drifting copies of the paragraph text.
-// Vertical gaps between sections (marginTop values) are also read directly
-// off node 117:139 (the deltas between each section's own y and the
-// previous section's bottom edge) — normal document flow, not absolute y,
-// so real rendered text height (which can differ slightly from Figma's own
-// box height) never desyncs label from content.
-function IntroColumns({ gap }: { gap: string }) {
+// One section's label + content, side by side as ONE flex row so they
+// share the exact same top edge (`items-start`) no matter how tall the
+// content actually renders — label and content used to be two independent
+// marginTop chains computed from Figma's own assumed paragraph heights,
+// which drifted out of sync from the real (natural-CSS-wrap) rendered
+// height and made "Exhibition"/"contact" visibly misaligned from their
+// content. `marginTop` on the row itself (not per-column) is the gap from
+// the PREVIOUS row's actual bottom (always driven by content, the taller
+// column) to this row's top — read off node 117:139.
+function IntroSectionRow({
+  label,
+  gap,
+  marginTop,
+  children,
+}: {
+  label: string;
+  gap: string;
+  marginTop?: string;
+  children: ReactNode;
+}) {
   return (
-    <div className="flex items-start">
+    <div className="flex items-start" style={marginTop ? { marginTop } : undefined}>
       <div style={{ width: px(INTRO_LABEL_COL_W), flexShrink: 0 }}>
-        <h2 className={SECTION_LABEL_TEXT_CLASS}>introduction</h2>
-        <h2 className={SECTION_LABEL_TEXT_CLASS} style={{ marginTop: px(523.2517004013062) }}>
-          Exhibition
-        </h2>
-        <h2 className={SECTION_LABEL_TEXT_CLASS} style={{ marginTop: px(273.2517004013062) }}>
-          contact
-        </h2>
+        <h2 className={SECTION_LABEL_TEXT_CLASS}>{label}</h2>
       </div>
       <div style={{ width: gap, flexShrink: 0 }} />
-      <div style={{ flexShrink: 0 }}>
-        <div className="text-[13px] leading-[1.7]" style={{ width: px(564) }}>
+      <div style={{ flexShrink: 0 }}>{children}</div>
+    </div>
+  );
+}
+
+function IntroColumns({ gap }: { gap: string }) {
+  return (
+    <div>
+      <IntroSectionRow label="introduction" gap={gap}>
+        <div className="text-[11px] leading-[1.7]" style={{ width: px(INTRO_ENGLISH_PARA_W) }}>
           <p>
             Furniture serves a clear purpose as a tool that supports everyday life, yet it also
             exists in a state of hypothesis, as its purpose can shift through interaction with the
@@ -194,8 +271,8 @@ function IntroColumns({ gap }: { gap: string }) {
           </p>
         </div>
         <div
-          className={`${pretendard.className} text-[13px] leading-[1.75]`}
-          style={{ width: px(546), marginTop: px(18) }}
+          className={`${pretendard.className} text-[11px] leading-[1.75]`}
+          style={{ width: px(INTRO_KOREAN_PARA_W), marginTop: px(18) }}
         >
           <p>
             가구는 인간의 생활을 보조하는 도구라는 점에서 명확한 목적성을 담보하고 있으면서도,
@@ -210,24 +287,30 @@ function IntroColumns({ gap }: { gap: string }) {
             열어두는 구조적 장치를 필요로 하는데, 나는 그것을 &lsquo;파츠&rsquo;로 상정하였다.
           </p>
         </div>
-        <div style={{ width: px(600), marginTop: px(128.40646362304688) }}>
-          <ExhibitionList fontSize={14} />
+      </IntroSectionRow>
+      <IntroSectionRow label="Exhibition" gap={gap} marginTop={px(128.40646362304688)}>
+        <div style={{ width: px(INTRO_EXHIBITION_W) }}>
+          <ExhibitionList fontSize={11} />
         </div>
-        <div style={{ width: px(161), marginTop: px(46.4761962890625) }}>
-          <ContactBlock fontSize={14} />
+      </IntroSectionRow>
+      <IntroSectionRow label="contact" gap={gap} marginTop={px(46.4761962890625)}>
+        <div style={{ width: px(INTRO_CONTACT_W) }}>
+          <ContactBlock fontSize={11} />
         </div>
-      </div>
+      </IntroSectionRow>
     </div>
   );
 }
 
-// Stage 1+2 (viewport >= 1221px): image beside the label/content pair. Pure
-// CSS `clamp()` covers both stages continuously — introImageWidthCss stays
-// clamped to its own native max until INTRO_STAGE2_START, so nothing extra
-// is needed here to tell the two stages apart.
+// Phases A+B (viewport >= 1097px): image beside the label/content pair.
+// Pure CSS `clamp()` covers both phases continuously — each of
+// introImageWidthCss/introImageLabelGapCss/introGapCss stays clamped to its
+// own native max above its own phase's start width, so nothing extra is
+// needed here to tell the phases apart; the row's right margin shrinking to
+// 40 needs no clamp() of its own at all — see INTRO_PHASE_B_END's comment.
 function IntroRowLayout() {
   return (
-    <div className="hidden min-[1220px]:flex min-[1220px]:items-start" style={{ marginTop: px(211) }}>
+    <div className="hidden min-[1097px]:flex min-[1097px]:items-start" style={{ marginTop: px(211) }}>
       <div
         className="relative shrink-0"
         style={{
@@ -237,7 +320,7 @@ function IntroRowLayout() {
       >
         <Image src="/info/cv.png" alt="" fill className="object-cover" priority />
       </div>
-      <div style={{ width: px(INTRO_IMAGE_LABEL_GAP), flexShrink: 0 }} />
+      <div style={{ width: introImageLabelGapCss, flexShrink: 0 }} />
       <div style={{ marginTop: px(13) }}>
         <IntroColumns gap={introGapCss} />
       </div>
@@ -245,18 +328,25 @@ function IntroRowLayout() {
   );
 }
 
-// Stage 3 (viewport 800px-1220px): image restored to native size, on top;
-// label/content pair below it, back at their original (uncompressed) gap.
+// Stage 5 (viewport 800px-1096px): image restored to native size, on top,
+// flush left (marginLeft 0 — an explicit correction: an earlier revision
+// used 35px here); label/content pair below it, back at their original
+// (uncompressed) gap and its own separate 40px left margin (not the same
+// as the image's — the image stays at 0).
 function IntroStackedLayout() {
   return (
-    <div
-      className="hidden max-[1220px]:block"
-      style={{ marginTop: px(211), marginLeft: px(INTRO_STACK_MARGIN) }}
-    >
-      <div className="relative" style={{ width: px(INTRO_IMAGE_NATIVE_W), height: px(INTRO_IMAGE_NATIVE_H) }}>
+    <div className="hidden max-[1097px]:block" style={{ marginTop: px(211) }}>
+      <div
+        className="relative"
+        style={{
+          width: px(INTRO_IMAGE_NATIVE_W),
+          height: px(INTRO_IMAGE_NATIVE_H),
+          marginLeft: px(INTRO_STACK_MARGIN),
+        }}
+      >
         <Image src="/info/cv.png" alt="" fill className="object-cover" priority />
       </div>
-      <div style={{ marginTop: px(INTRO_STACK_GAP) }}>
+      <div style={{ marginTop: px(INTRO_STACK_GAP), marginLeft: px(INTRO_STACK_TEXT_MARGIN) }}>
         <IntroColumns gap={px(INTRO_LABEL_CONTENT_GAP_NATIVE)} />
       </div>
     </div>
@@ -266,19 +356,35 @@ function IntroStackedLayout() {
 function DesktopInfo() {
   return (
     <div className="hidden h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] min-[800px]:block">
-      <div className="pb-16">
+      <div className="relative" style={{ paddingBottom: px(INTRO_BOTTOM_PADDING) }}>
         <IntroRowLayout />
         <IntroStackedLayout />
 
-        {/* Fixed size, always viewport-centered, flow-positioned below
-            whichever layout above is actually visible/tallest — never a
-            hardcoded absolute y (would overlap the much taller stacked
-            layout, which has no single Figma-designed y to read off). */}
-        <div className="flex flex-col items-center" style={{ marginTop: px(INTRO_LOGO_GAP) }}>
-          <div className="relative" style={{ width: px(69), height: px(87) }}>
+        {/* Fixed size, always viewport-centered (left:50vw + -translate-x-1/2,
+            same technique as PartsGallery/FurnitureGallery's footer — see
+            INTRO_FOOTER_LOGO's comment), flow-positioned below whichever
+            layout above is actually visible/tallest — never a hardcoded
+            absolute y (would overlap the much taller stacked layout, which
+            has no single Figma-designed y to read off). */}
+        <div
+          className="relative -translate-x-1/2"
+          style={{
+            left: "50vw",
+            width: px(INTRO_FOOTER_GROUP_WIDTH),
+            height: px(INTRO_FOOTER_GROUP_HEIGHT),
+            marginTop: px(INTRO_LOGO_GAP),
+          }}
+        >
+          <div
+            className="relative"
+            style={{ width: px(INTRO_FOOTER_LOGO.w), height: px(INTRO_FOOTER_LOGO.h) }}
+          >
             <Image src="/main/logo.png" alt="" fill className="object-contain" />
           </div>
-          <p className="whitespace-nowrap text-[10px] text-[#818181]" style={{ marginTop: px(4) }}>
+          <p
+            className="absolute whitespace-nowrap text-[8px] text-[#818181]"
+            style={{ left: px(INTRO_FOOTER_TEXT.x), top: px(INTRO_FOOTER_TEXT.y), width: px(INTRO_FOOTER_TEXT.w) }}
+          >
             Eunji Wang©
           </p>
         </div>
