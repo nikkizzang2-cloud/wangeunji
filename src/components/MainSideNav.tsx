@@ -13,6 +13,20 @@ const NAV_ITEMS = [
   { label: "parts", href: "/main/parts", y: 221 },
 ] as const;
 
+// Figma "main.parts" frame (get_metadata nodeId 117:2): width=1512. Desktop
+// nav is now literally fixed-px, right-anchored by a margin that never
+// shrinks ("furniture/parts 메뉴는 margin-right 고정") — width=78,
+// right margin = 1512 - 1394 - 78 = 40px. Stacked with 0 gap (furniture
+// y=200 h=15, parts y=215 h=15). The current page is now indicated by color
+// (`#b9b9b9`, muted) instead of font-weight — neither label is bold in this
+// design (both Helvetica Regular).
+const DESKTOP_NAV_WIDTH = 78;
+const DESKTOP_NAV_RIGHT_MARGIN = 40;
+const DESKTOP_NAV_ITEMS = [
+  { label: "furniture", href: "/main/furniture", y: 200 },
+  { label: "parts", href: "/main/parts", y: 215 },
+] as const;
+
 // Below MOBILE_BREAKPOINT (800px, see TopBar.tsx), the mobile Figma frames
 // ("main.parts mobile" 95:2244, "parts.funiture mobile" 95:2340) place this
 // nav at x=682 (right edge at 760, i.e. 40px from the 800px frame's own
@@ -47,37 +61,45 @@ type MainSideNavProps = {
   // other than exactly 1920px it drifted out of proportion with the (now
   // correctly-scaling) page content — same issue as TopBar, see its comment.
   fixed?: boolean;
+  // Furniture-only: its grid intentionally borrows parts' (narrower) scale
+  // reference width so both pages start shrinking at the same viewport
+  // width (see FurnitureGallery.tsx's SCALE_REFERENCE_WIDTH comment) — the
+  // cost is that its widest tile, Rectangle f15, can momentarily render far
+  // enough right to sit behind this fixed menu while scrolled to its
+  // on-screen band. White text keeps both labels legible against the image
+  // in that moment (matches the hover-text layers, already white-on-image),
+  // overriding the normal black/muted-current-page coloring while true.
+  whiteOverlap?: boolean;
 };
 
-export default function MainSideNav({ pinned = false, fixed = false }: MainSideNavProps) {
+export default function MainSideNav({
+  pinned = false,
+  fixed = false,
+  whiteOverlap = false,
+}: MainSideNavProps) {
   const pathname = usePathname();
 
   if (fixed) {
     return (
       <div className="pointer-events-none fixed inset-x-0 top-0 z-30">
-        <div
-          className="figma-fixed-scale hidden h-full min-[800px]:block"
-          style={{ ["--ffs-width" as string]: px(1920) }}
-        >
-          <div className="figma-fixed-scale-inner">
-            {NAV_ITEMS.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`pointer-events-auto absolute text-right capitalize ${
-                  pathname === item.href ? "font-bold" : ""
-                }`}
-                style={{
-                  left: px(1764),
-                  top: px(item.y),
-                  width: px(78),
-                  fontSize: px(13),
-                }}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </div>
+        <div className="relative hidden h-full min-[800px]:block">
+          {DESKTOP_NAV_ITEMS.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`pointer-events-auto absolute text-right capitalize ${
+                whiteOverlap ? "text-white" : pathname === item.href ? "text-[#b9b9b9]" : ""
+              }`}
+              style={{
+                right: px(DESKTOP_NAV_RIGHT_MARGIN),
+                top: px(item.y),
+                width: px(DESKTOP_NAV_WIDTH),
+                fontSize: px(10),
+              }}
+            >
+              {item.label}
+            </Link>
+          ))}
         </div>
 
         <div

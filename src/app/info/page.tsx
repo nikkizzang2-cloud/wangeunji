@@ -40,10 +40,43 @@ const pretendard = localFont({
   display: "swap",
 });
 
-const DESKTOP_CANVAS_WIDTH = 1920;
-const DESKTOP_CANVAS_HEIGHT = 1731;
 const MOBILE_CANVAS_WIDTH = 800;
 const MOBILE_CANVAS_HEIGHT = 2074;
+
+// Introduction/Exhibition/Contact block geometry (Figma get_metadata node
+// 117:139, the 1512px reference frame). Explicit brief from the user: below
+// the design's native 1512px viewport width, first shrink the gap between
+// the label column and content column (176.38px -> 38px floor) while font
+// size, image size and every text block's own width stay fixed; once that
+// gap bottoms out, shrink the cv image instead (592.92px -> 440px floor)
+// while the 38px gap stays fixed; once the image also bottoms out
+// (~1220.7px), restructure into a stacked column (image restored to native
+// size, on top; the label+content row below it at the original 176.38px
+// gap and a 95px vertical gap; the whole block at a 35px left margin) until
+// the existing 800px mobile breakpoint takes over with its own separate
+// Figma frame ("info mobile", 95:2287) — unchanged, see MobileInfo below.
+const INTRO_VIEWPORT_NATIVE = 1512;
+const INTRO_IMAGE_NATIVE_W = 592.9234619140625;
+const INTRO_IMAGE_NATIVE_H = 407.8809509277344;
+const INTRO_IMAGE_FLOOR_W = 440;
+const INTRO_IMAGE_LABEL_GAP = 93.7034912109375; // image right edge -> label column, always fixed
+const INTRO_LABEL_COL_W = 68;
+const INTRO_LABEL_CONTENT_GAP_NATIVE = 176.38156509399414; // label column -> content column
+const INTRO_LABEL_CONTENT_GAP_FLOOR = 38;
+// Viewport width at which the label<->content gap bottoms out at its floor.
+const INTRO_STAGE2_START =
+  INTRO_VIEWPORT_NATIVE - (INTRO_LABEL_CONTENT_GAP_NATIVE - INTRO_LABEL_CONTENT_GAP_FLOOR); // 1373.62
+// Viewport width at which the image also bottoms out (~1220.7) -> the
+// min-[1220px]/max-[1220px] Tailwind breakpoints below switch layouts —
+// Tailwind compiles `max-[1220px]` to `not (min-width: 1220px)` (strictly
+// < 1220px, not <=), so pairing it with `min-[1221px]` left a 1px gap at
+// exactly 1220px where neither layout showed (caught via browser preview).
+const INTRO_STACK_GAP = 95; // image bottom -> label/content row, stacked layout only
+const INTRO_STACK_MARGIN = 35; // left margin of the whole block, stacked layout only
+const INTRO_LOGO_GAP = 206; // content column bottom -> logo, both layouts — flow-positioned (not absolute px) so it never overlaps whichever layout is taller
+
+const introGapCss = `clamp(${px(INTRO_LABEL_CONTENT_GAP_FLOOR)}, calc(${px(INTRO_LABEL_CONTENT_GAP_NATIVE)} - (${px(INTRO_VIEWPORT_NATIVE)} - 100vw)), ${px(INTRO_LABEL_CONTENT_GAP_NATIVE)})`;
+const introImageWidthCss = `clamp(${px(INTRO_IMAGE_FLOOR_W)}, calc(${px(INTRO_IMAGE_NATIVE_W)} - (${px(INTRO_STAGE2_START)} - 100vw)), ${px(INTRO_IMAGE_NATIVE_W)})`;
 
 type ExhibitionEntry = {
   year: string;
@@ -120,99 +153,134 @@ function ContactBlock({ fontSize }: { fontSize: number }) {
   );
 }
 
-const DESKTOP_SECTION_LABEL_CLASS =
-  "absolute w-[68px] text-[13px] font-normal capitalize text-[#656565]";
+const SECTION_LABEL_TEXT_CLASS = "text-[13px] font-normal capitalize text-[#656565]";
+
+// The label column + content column pair — identical in both layouts below,
+// only their horizontal gap (fixed vs. shrinking) and surrounding wrapper
+// differ, so this is shared to avoid drifting copies of the paragraph text.
+// Vertical gaps between sections (marginTop values) are also read directly
+// off node 117:139 (the deltas between each section's own y and the
+// previous section's bottom edge) — normal document flow, not absolute y,
+// so real rendered text height (which can differ slightly from Figma's own
+// box height) never desyncs label from content.
+function IntroColumns({ gap }: { gap: string }) {
+  return (
+    <div className="flex items-start">
+      <div style={{ width: px(INTRO_LABEL_COL_W), flexShrink: 0 }}>
+        <h2 className={SECTION_LABEL_TEXT_CLASS}>introduction</h2>
+        <h2 className={SECTION_LABEL_TEXT_CLASS} style={{ marginTop: px(523.2517004013062) }}>
+          Exhibition
+        </h2>
+        <h2 className={SECTION_LABEL_TEXT_CLASS} style={{ marginTop: px(273.2517004013062) }}>
+          contact
+        </h2>
+      </div>
+      <div style={{ width: gap, flexShrink: 0 }} />
+      <div style={{ flexShrink: 0 }}>
+        <div className="text-[13px] leading-[1.7]" style={{ width: px(564) }}>
+          <p>
+            Furniture serves a clear purpose as a tool that supports everyday life, yet it also
+            exists in a state of hypothesis, as its purpose can shift through interaction with the
+            user. The functions and forms designed around the tentative expectation of “how it
+            will be used” are continually redefined through the user’s everyday life.
+          </p>
+          <p className="mt-4">
+            This leads to the concept of Hypothesis Furniture, in which the maker and the user
+            share the agency to determine how the furniture is used, and its existence is
+            ultimately affirmed through use in everyday life. Hypothesis Furniture is not simply
+            about transforming form. Rather, it requires structural devices that suspend a
+            singular function and leave room for multiple possibilities. I conceive of these
+            devices as &apos;parts&apos;.
+          </p>
+        </div>
+        <div
+          className={`${pretendard.className} text-[13px] leading-[1.75]`}
+          style={{ width: px(546), marginTop: px(18) }}
+        >
+          <p>
+            가구는 인간의 생활을 보조하는 도구라는 점에서 명확한 목적성을 담보하고 있으면서도,
+            사용자와의 상호작용에 따라 그 목적이 변모할 가능성을 지니기에 일종의 가설 상태에 놓여
+            있다. &lsquo;이렇게 쓰일 것이다&rsquo; 라는 잠정적 기대나 전제로 설계된 기능과 형태는
+            쓰는 이의 생활 속에서 끊임없이 갱신된다.
+          </p>
+          <p className="mt-5">
+            이는 가구를 만드는 이와 쓰는 이가 공동의 결정 권한을 가진 채, 일상에서 쓰임을 통해
+            가구의 존재가 증명되는 가설 가구 (Hypothesis Furniture) 의 개념으로 이어진다. 이때
+            가설 가구는 단순한 조형의 전환이 아니라 단일한 쓰임을 유예하고 다양한 가능성을
+            열어두는 구조적 장치를 필요로 하는데, 나는 그것을 &lsquo;파츠&rsquo;로 상정하였다.
+          </p>
+        </div>
+        <div style={{ width: px(600), marginTop: px(128.40646362304688) }}>
+          <ExhibitionList fontSize={14} />
+        </div>
+        <div style={{ width: px(161), marginTop: px(46.4761962890625) }}>
+          <ContactBlock fontSize={14} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Stage 1+2 (viewport >= 1221px): image beside the label/content pair. Pure
+// CSS `clamp()` covers both stages continuously — introImageWidthCss stays
+// clamped to its own native max until INTRO_STAGE2_START, so nothing extra
+// is needed here to tell the two stages apart.
+function IntroRowLayout() {
+  return (
+    <div className="hidden min-[1220px]:flex min-[1220px]:items-start" style={{ marginTop: px(211) }}>
+      <div
+        className="relative shrink-0"
+        style={{
+          width: introImageWidthCss,
+          aspectRatio: `${INTRO_IMAGE_NATIVE_W} / ${INTRO_IMAGE_NATIVE_H}`,
+        }}
+      >
+        <Image src="/info/cv.png" alt="" fill className="object-cover" priority />
+      </div>
+      <div style={{ width: px(INTRO_IMAGE_LABEL_GAP), flexShrink: 0 }} />
+      <div style={{ marginTop: px(13) }}>
+        <IntroColumns gap={introGapCss} />
+      </div>
+    </div>
+  );
+}
+
+// Stage 3 (viewport 800px-1220px): image restored to native size, on top;
+// label/content pair below it, back at their original (uncompressed) gap.
+function IntroStackedLayout() {
+  return (
+    <div
+      className="hidden max-[1220px]:block"
+      style={{ marginTop: px(211), marginLeft: px(INTRO_STACK_MARGIN) }}
+    >
+      <div className="relative" style={{ width: px(INTRO_IMAGE_NATIVE_W), height: px(INTRO_IMAGE_NATIVE_H) }}>
+        <Image src="/info/cv.png" alt="" fill className="object-cover" priority />
+      </div>
+      <div style={{ marginTop: px(INTRO_STACK_GAP) }}>
+        <IntroColumns gap={px(INTRO_LABEL_CONTENT_GAP_NATIVE)} />
+      </div>
+    </div>
+  );
+}
 
 function DesktopInfo() {
   return (
     <div className="hidden h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] min-[800px]:block">
-      <div
-        className="figma-canvas-frame"
-        style={{
-          ["--fc-width" as string]: px(DESKTOP_CANVAS_WIDTH),
-          ["--fc-height" as string]: px(DESKTOP_CANVAS_HEIGHT),
-        }}
-      >
-        <div className="figma-canvas-scaler">
-          <div className="figma-canvas-content">
-            <div
-              className="absolute overflow-hidden"
-              style={{ left: px(0), top: px(253), width: px(753), height: px(518) }}
-            >
-              <Image src="/info/cv.png" alt="" fill className="object-cover" priority />
-            </div>
+      <div className="pb-16">
+        <IntroRowLayout />
+        <IntroStackedLayout />
 
-            <h2 className={DESKTOP_SECTION_LABEL_CLASS} style={{ left: px(872), top: px(270) }}>
-              introduction
-            </h2>
-            <div
-              className="absolute text-[13px] leading-[1.7]"
-              style={{ left: px(1164), top: px(270), width: px(564), height: px(237) }}
-            >
-              <p>
-                Furniture serves a clear purpose as a tool that supports everyday life, yet it
-                also exists in a state of hypothesis, as its purpose can shift through interaction
-                with the user. The functions and forms designed around the tentative expectation
-                of “how it will be used” are continually redefined through the user’s everyday
-                life.
-              </p>
-              <p className="mt-4">
-                This leads to the concept of Hypothesis Furniture, in which the maker and the user
-                share the agency to determine how the furniture is used, and its existence is
-                ultimately affirmed through use in everyday life. Hypothesis Furniture is not
-                simply about transforming form. Rather, it requires structural devices that
-                suspend a singular function and leave room for multiple possibilities. I conceive
-                of these devices as &apos;parts&apos;.
-              </p>
-            </div>
-            <div
-              className={`${pretendard.className} absolute text-[13px] leading-[1.75]`}
-              style={{ left: px(1164), top: px(558), width: px(546), height: px(223) }}
-            >
-              <p>
-                가구는 인간의 생활을 보조하는 도구라는 점에서 명확한 목적성을 담보하고 있으면서도,
-                사용자와의 상호작용에 따라 그 목적이 변모할 가능성을 지니기에 일종의 가설 상태에
-                놓여 있다. &lsquo;이렇게 쓰일 것이다&rsquo; 라는 잠정적 기대나 전제로 설계된 기능과
-                형태는 쓰는 이의 생활 속에서 끊임없이 갱신된다.
-              </p>
-              <p className="mt-5">
-                이는 가구를 만드는 이와 쓰는 이가 공동의 결정 권한을 가진 채, 일상에서 쓰임을 통해
-                가구의 존재가 증명되는 가설 가구 (Hypothesis Furniture) 의 개념으로 이어진다. 이때
-                가설 가구는 단순한 조형의 전환이 아니라 단일한 쓰임을 유예하고 다양한 가능성을
-                열어두는 구조적 장치를 필요로 하는데, 나는 그것을 &lsquo;파츠&rsquo;로 상정하였다.
-              </p>
-            </div>
-
-            <h2 className={DESKTOP_SECTION_LABEL_CLASS} style={{ left: px(872), top: px(971) }}>
-              Exhibition
-            </h2>
-            <div className="absolute" style={{ left: px(1164), top: px(971), width: px(600), height: px(308) }}>
-              <ExhibitionList fontSize={14} />
-            </div>
-
-            <h2 className={DESKTOP_SECTION_LABEL_CLASS} style={{ left: px(872), top: px(1338) }}>
-              contact
-            </h2>
-            <div
-              className="absolute"
-              style={{ left: px(1166), top: px(1338), width: px(161), height: px(63) }}
-            >
-              <ContactBlock fontSize={14} />
-            </div>
-
-            <div
-              className="absolute"
-              style={{ left: px(925), top: px(1608), width: px(69), height: px(87) }}
-            >
-              <Image src="/main/logo.png" alt="" fill className="object-contain" />
-            </div>
-            <p
-              className="absolute whitespace-nowrap text-[10px] text-[#818181]"
-              style={{ left: px(933), top: px(1688), width: px(59) }}
-            >
-              Eunji Wang©
-            </p>
+        {/* Fixed size, always viewport-centered, flow-positioned below
+            whichever layout above is actually visible/tallest — never a
+            hardcoded absolute y (would overlap the much taller stacked
+            layout, which has no single Figma-designed y to read off). */}
+        <div className="flex flex-col items-center" style={{ marginTop: px(INTRO_LOGO_GAP) }}>
+          <div className="relative" style={{ width: px(69), height: px(87) }}>
+            <Image src="/main/logo.png" alt="" fill className="object-contain" />
           </div>
+          <p className="whitespace-nowrap text-[10px] text-[#818181]" style={{ marginTop: px(4) }}>
+            Eunji Wang©
+          </p>
         </div>
       </div>
     </div>

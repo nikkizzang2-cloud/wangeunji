@@ -14,103 +14,137 @@ import MainSideNav from "./MainSideNav";
 const crimsonText = Crimson_Text({ subsets: ["latin"], weight: "600" });
 const ebGaramond = EB_Garamond({ subsets: ["latin"], weight: "400" });
 
-// Figma "/main.parts" frame (get_metadata nodeId 23:1023): width=1920,
-// height=6728.
+// Figma "main.parts" frame (get_metadata nodeId 117:2): width=1512,
+// height=5372.
 //
-// The statement text, grid, and footer all live in ONE canvas scaled
-// uniformly by the same min(1, viewport/1920) factor (`.figma-canvas-*`,
-// globals.css) — TopBar/MainSideNav's own `.figma-fixed-scale` (see their
-// files) use the identical factor, so the whole page shrinks/grows together
-// as one composition, matching Figma exactly at any viewport width.
-//
-// An earlier revision split this into a "literally fixed px" group (header/
-// statement/nav/footer) and a "scales with the viewport" group (just the
-// grid), per a responsive rule read as "상단바 아래 텍스트 레이어... 는
-// 크기·비율 고정". That only matched Figma at exactly 1920px viewport width;
-// at any other width (i.e. almost every real browser window — MacBook
-// screens are commonly 1440-1728px) the "fixed" group didn't shrink with the
-// grid, so it visibly outgrew its correct proportion relative to the page
-// (reported as "박스 이외의 요소들이 크게 보여" — confirmed by the fact that
-// setting Chrome's own zoom to make `window.innerWidth` land back on exactly
-// 1920 made everything match again). So the statement/footer below now use
-// this page's raw Figma x/y coordinates directly, same as the tiles always
-// did — no more GRID_X_OFFSET/GRID_Y_OFFSET rebasing or separate flow-layout
-// margins for them.
-const CANVAS_WIDTH = 1920;
-const CANVAS_HEIGHT = 6728;
+// Site-wide rule change: nothing scales together as one composition
+// anymore. The header, statement text, and nav menu are each literally
+// fixed-px, anchored by a margin that never shrinks (left for statement/
+// grid, right for the nav menu — see TopBar.tsx/MainSideNav.tsx). Only the
+// tile grid itself still shrinks, and only far enough to avoid colliding
+// with the nav menu on its way to the right edge — see
+// `.figma-collision-scale` (globals.css). Above that collision width the
+// grid renders at its exact native Figma size; below it, the grid scales
+// down as one rigid block (all 53 tiles' relative positions/gaps stay
+// proportionally identical — same technique the old `.figma-canvas-*`
+// used, just with a narrower "100%" reference).
+const LEFT_MARGIN = 35;
+const NAV_RESERVED_WIDTH = 78 + 40; // MainSideNav's own width + its fixed right margin
+const GRID_RESERVED_WIDTH = LEFT_MARGIN + NAV_RESERVED_WIDTH;
 
-// x/y/width/height for each of the 53 tiles (node ids 23:1028-23:1080), read
-// directly off get_metadata — not hand-tuned — sorted into visual
-// (top-to-bottom, left-to-right) order for DOM/reading order. This is the
-// same rectangle-to-slot order as the previous revision (only sizes/
-// positions changed), so it still lines up with PARTS_RECTANGLE_NUMBERS in
-// works.ts and the already-downloaded rectangle-N.jpg photos — object-cover
-// re-crops each existing photo (base and hover) to the new box automatically.
-//
-// The grid keeps its own children at exact Figma px positions (never
-// reflowed), uniformly scaled via `.figma-canvas-*` (globals.css) to fit the
-// viewport width — like an image, not a responsive reflow — so the
-// composition always matches Figma exactly and never needs horizontal
-// scroll. See CLAUDE.md "배치/크기 정확도" for why this page is the one
-// exception to the `figma-pin` (%-scaling) convention used elsewhere.
-const TILE_GEOM: [x: number, y: number, w: number, h: number][] = [
-  [50, 197, 217.83, 168.87],
-  [282.44, 197, 389.82, 352.52],
-  [686.02, 197, 295.63, 437.38],
-  [50, 379.86, 217.83, 167.87],
-  [998.26, 542.06, 327.74, 249.8],
-  [50, 563.51, 622.51, 415.67],
-  [686.02, 649.81, 295.77, 328.74],
-  [998.26, 805.85, 211.83, 172.86],
-  [50, 993.54, 341.73, 308.76],
-  [406.72, 993.54, 353.72, 308.76],
-  [775.56, 993.54, 352.72, 308.76],
-  [50, 1317.28, 212.83, 171.87],
-  [277.82, 1317.28, 295.77, 437.66],
-  [588.58, 1317.28, 622.51, 437.66],
-  [50, 1505.14, 212.83, 171.87],
-  [50, 1692, 212.83, 429.66],
-  [277.82, 1769.93, 389.69, 350.73],
-  [682.51, 1769.93, 473.63, 440.65],
-  [50.996, 2136.65, 616.52, 415.67],
-  [682.51, 2225.51, 295.77, 325.74],
-  [993.26, 2225.51, 211.83, 172.86],
-  [50, 2567.31, 341.73, 308.76],
-  [403.72, 2567.31, 353.72, 308.76],
-  [771.43, 2567.31, 352.72, 308.76],
-  [50, 2891.06, 296.77, 437.66],
-  [361.76, 2891.06, 217.83, 350.73],
-  [594.57, 2891.06, 390.69, 350.73],
-  [1000.25, 2891.06, 217.83, 167.87],
-  [1000.25, 3073.91, 217.83, 167.87],
-  [361.76, 3256.77, 623.51, 415.67],
-  [50, 3343.7, 296.77, 328.74],
-  [50, 3687.43, 345.73, 308.76],
-  [410.72, 3687.43, 345.73, 308.76],
-  [771.43, 3687.44, 358.72, 308.76],
-  [50, 4011.18, 558.56, 436.66],
-  [625.54, 4011.18, 278.78, 436.66],
-  [917.32, 4089.11, 211.83, 172.86],
-  [917.32, 4275.96, 211.83, 172.86],
-  [50, 4462.83, 212.83, 351.72],
-  [277.82, 4462.83, 389.69, 350.73],
-  [681.51, 4462.83, 473.63, 440.65],
-  [50, 4828.54, 616.52, 415.67],
-  [681.51, 4917.47, 295.77, 325.74],
-  [50, 5265.19, 212.83, 172.86],
-  [277.82, 5265.26, 295.77, 437.66],
-  [588.58, 5266.19, 622.51, 436.66],
-  [50, 5453.04, 212.83, 171.87],
-  [50.93, 5639.9, 212.83, 429.66],
-  [277.82, 5717.85, 389.69, 351.72],
-  [682.51, 5717.85, 473.63, 440.65],
-  [50, 6084.55, 375.71, 343.73],
-  [440.7, 6084.55, 226.82, 343.73],
-  // Rectangle 53: enlarged from the Figma-metadata size (212.83x171.87) to
-  // 341x255 per explicit request — left/top (x/y) unchanged, only
-  // width/height grow (right/bottom edges extend outward).
-  [682.52, 6173.92, 341, 255],
+// Grid anchor point: literally fixed (not scaled) — "상단바–텍스트 레이어–
+// 사각형 이미지 그룹 사이의 간격은 화면이 줄어도 고정". Left is the same
+// LEFT_MARGIN the statement text uses; top is the raw Figma y of the
+// topmost tile (185, Rectangles 3/4) — same convention as every other
+// element on this page: use get_metadata's raw px directly, no synthetic
+// "gap" formula.
+const GRID_ANCHOR_TOP = 185;
+
+// Native (unscaled) grid content size, measured edge-to-edge across the 53
+// tiles below (min x=35 treated as local 0 via LEFT_MARGIN, min y=185 via
+// GRID_ANCHOR_TOP) — this, not the full 1512px frame width, is what
+// `.figma-collision-scale` compares against the leftover viewport width.
+const GRID_NATIVE_WIDTH = 1004.9998168945312;
+const GRID_NATIVE_HEIGHT = 4907.869171142578;
+
+// x/y/width/height for each of the 53 tiles (node ids 117:7-117:59), read
+// directly off get_metadata and rebased to the grid's own local origin
+// (raw x - LEFT_MARGIN, raw y - GRID_ANCHOR_TOP) — not hand-tuned. Indexed
+// by RECTANGLE NUMBER (index 0 = "Rectangle 1", ..., index 52 = the last
+// one, "Rectangle 96"/53rd) — this is the order get_metadata itself
+// returned the nodes in, NOT partsGallery's visual/masonry order. Figma's
+// rectangle numbers don't run sequentially in visual order (that's exactly
+// what PARTS_RECTANGLE_NUMBERS in works.ts is for), so pairing this
+// straight against `partsGallery[index]` scrambled which photo lands in
+// which box — fixed below by deriving TILE_GEOM through that same mapping,
+// same as works.ts itself does for the image filename.
+const TILE_GEOM_BY_RECTANGLE: [x: number, y: number, w: number, h: number][] = [
+  [1, 1, 171.5663, 133.0033],
+  [0, 144.0234, 171.5663, 132.2163],
+  [183.0742, 0, 307.0287, 277.648],
+  [500.9414, 0, 232.8424, 344.4892],
+  [0, 288.668, 490.3021, 327.3926],
+  [500.9414, 356.6387, 232.9525, 258.9235],
+  [746.8633, 271.7734, 258.1365, 196.7504],
+  [746.8633, 479.543, 166.8443, 136.1513],
+  [0, 627.3691, 269.1546, 243.1835],
+  [280.959, 627.3691, 278.5986, 243.1835],
+  [571.4668, 627.3691, 277.8115, 243.1835],
+  [0, 882.3574, 167.6313, 135.3643],
+  [0, 1030.3145, 167.6313, 135.3643],
+  [179.4355, 882.3574, 232.9525, 344.7067],
+  [424.1914, 882.3574, 490.3021, 344.7067],
+  [0, 1177.4883, 167.6313, 338.4107],
+  [179.4355, 1238.8711, 306.9306, 276.2376],
+  [498.1738, 1238.8711, 373.0388, 347.0677],
+  [0.7852, 1527.7031, 485.58, 327.3926],
+  [498.1738, 1597.6895, 232.9525, 256.5625],
+  [742.9297, 1597.6895, 166.8443, 136.1513],
+  [0, 1866.8984, 269.1546, 243.1835],
+  [278.5977, 1866.8984, 278.5986, 243.1835],
+  [568.2129, 1866.8984, 277.8115, 243.1835],
+  [0, 2121.8867, 233.7394, 344.7068],
+  [245.5449, 2121.8867, 171.5663, 276.2376],
+  [428.916, 2121.8867, 307.7177, 276.2376],
+  [748.4355, 2121.8867, 171.5663, 132.2163],
+  [748.4355, 2265.9062, 171.5663, 132.2163],
+  [0, 2478.3965, 233.7394, 258.9235],
+  [245.5449, 2409.9297, 491.089, 327.3926],
+  [0, 2749.1309, 272.3026, 243.1835],
+  [284.1074, 2749.1309, 272.3026, 243.1835],
+  [568.2129, 2749.1309, 282.5336, 243.1835],
+  [0, 3004.1172, 439.9339, 343.9196],
+  [453.3086, 3004.1172, 219.5743, 343.9185],
+  [683.1211, 3065.498, 166.8443, 136.1513],
+  [683.1211, 3212.666, 166.8443, 136.1513],
+  [0, 3359.8418, 167.6313, 277.0246],
+  [179.4355, 3359.8418, 306.9306, 276.2376],
+  [497.3867, 3359.8418, 373.0388, 347.0677],
+  [0, 3647.8828, 485.58, 327.3926],
+  [497.3867, 3717.9258, 232.9525, 256.5625],
+  [0, 3991.8027, 167.6313, 136.1513],
+  [0, 4139.7559, 167.6313, 135.3643],
+  [179.4355, 3991.8516, 232.9525, 344.7066],
+  [424.1914, 3992.5898, 490.3021, 343.9196],
+  [0.7344, 4286.9258, 167.6313, 338.4107],
+  [179.4355, 4348.3184, 306.9306, 277.0246],
+  [498.1738, 4348.3184, 373.0388, 347.0677],
+  [0, 4637.1406, 295.9126, 270.7285],
+  [307.7188, 4637.1406, 178.6494, 270.7285],
+  [498.5625, 4706.8047, 268.5778, 200.8426],
 ];
+
+// Rebuilt into partsGallery's own array order — TILE_GEOM[index] is now the
+// box for whichever rectangle PARTS_RECTANGLE_NUMBERS[index] names, exactly
+// like works.ts derives partsGallery[index]'s image filename from the same
+// number. Photo N therefore always renders in Figma's "Rectangle N" box,
+// regardless of visual/DOM order.
+const TILE_GEOM: [x: number, y: number, w: number, h: number][] = PARTS_RECTANGLE_NUMBERS.map(
+  (rectangleNumber) => TILE_GEOM_BY_RECTANGLE[rectangleNumber - 1],
+);
+
+// Footer group ("Group 264", node 120:391): logo + copyright, always
+// horizontally centered ("로고는 항상 중앙 위치") — its own x=729/w=54 sits
+// exactly centered in the 1512-wide reference frame (729+27=756=1512/2), so
+// it's centered via `left:50%` + `translateX(-50%)` rather than a literal
+// left offset. `top` isn't a fixed number, though — the grid above it can be
+// scaled, so this must track the grid's *current* rendered bottom edge, not
+// its native one. FOOTER_GAP (logo top - grid's native bottom) is the one
+// piece that stays a fixed, non-scaling margin ("로고의 마진값 고정") —
+// applied on top of the grid's scaled height via a CSS calc() that reads
+// the same `--fcol-scale` custom property the grid's own transform uses
+// (see globals.css), so it stays in sync with no JS measurement.
+const FOOTER_GAP = 179.77731323242188;
+const FOOTER_GROUP_WIDTH = 54;
+const FOOTER_GROUP_HEIGHT = 74.609375;
+const FOOTER_LOGO = { w: 54, h: 68.08695983886719 };
+const FOOTER_TEXT = { x: 6.26171875, y: 62.609375, w: 47 };
+// Frame height (5372) minus everything above (fixed anchor + native grid
+// height + fixed footer gap + footer group height) — the bit of empty space
+// Figma left below the footer, kept as a literal bottom padding so the
+// scroll container's height matches the design exactly at scale 1.
+const PAGE_BOTTOM_PADDING =
+  5372 - (GRID_ANCHOR_TOP + GRID_NATIVE_HEIGHT + FOOTER_GAP + FOOTER_GROUP_HEIGHT);
 
 // Figma hard-breaks this into exactly two lines (node 23:1081 has two child
 // <p>s, not one wrapping paragraph) — the natural CSS wrap point at 727px
@@ -124,30 +158,31 @@ const STATEMENT_LINE_2 =
 // Same hover/tap info layer for both desktop (hover) and mobile (tap) —
 // "호버시 뜨는 정보는 기존의 텍스트 박스와 동일한 형식으로" — identical
 // markup/sizes, just triggered by a different interaction.
+// Figma "main.parts" frame (get_metadata nodeId 117:2) text-layer examples
+// (127:583 name-only, 127:589/127:587 name+type+size): numbering 13px,
+// Parts/Type 15px, size 10px — down from the previous revision's
+// 15/20/13px. Gap numbering->Parts/Type is 7px (unchanged), Parts/Type->size
+// is now 2px (was 4px/`mt-1`). Margin from the tile edge is now 10px left
+// (and, symmetrically, right, for wrap) for both variants, but bottom
+// differs: 12px when a type+size line follows, 13px for name-only.
 function HoverInfo({ item }: { item: GalleryItem }) {
   if (!item.partsInfo) return null;
   return (
-    // Anchored bottom-left, margin from the tile edges (not the Figma
-    // frame) so it holds position at every tile size; `right-[13px]` lets
-    // long "Type:" descriptions wrap instead of overflowing narrow tiles,
-    // since Figma only gave per-instance fixed widths. Items with a
-    // Type/dimensions line get more bottom margin (19px) than name-only
-    // items (17px).
     <div
-      className={`pointer-events-none absolute left-[13px] right-[13px] flex flex-col text-white ${
-        item.partsInfo.type ? "bottom-[19px]" : "bottom-[17px]"
+      className={`pointer-events-none absolute left-[10px] right-[10px] flex flex-col text-white ${
+        item.partsInfo.type ? "bottom-[12px]" : "bottom-[13px]"
       }`}
     >
-      <p className={`${crimsonText.className} mb-[7px] text-[15px] leading-[normal] whitespace-nowrap`}>
+      <p className={`${crimsonText.className} mb-[7px] text-[13px] leading-[normal] whitespace-nowrap`}>
         {item.partsInfo.number}
       </p>
-      <div className="capitalize text-[20px] leading-[0] tracking-[-0.6px]">
+      <div className="capitalize text-[15px] leading-[0] tracking-[-0.45px]">
         <p className="leading-[1.2]">Parts: {item.partsInfo.name}</p>
         {item.partsInfo.type && <p className="leading-[1.2]">Type: {item.partsInfo.type}</p>}
       </div>
       {item.partsInfo.dimensions && (
         <p
-          className={`${ebGaramond.className} mt-1 whitespace-pre-line lowercase text-[13px] leading-none tracking-[-0.39px]`}
+          className={`${ebGaramond.className} mt-[2px] whitespace-pre-line lowercase text-[10px] leading-none tracking-[-0.3px]`}
         >
           {item.partsInfo.dimensions}
         </p>
@@ -160,79 +195,117 @@ function DesktopPartsGallery() {
   const [hoveredId, setHoveredId] = useState<number | null>(null);
 
   return (
-    <div className="hidden h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] min-[800px]:block">
+    <div
+      className="figma-collision-scale hidden h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] min-[800px]:block"
+      style={{
+        ["--fcol-reserved" as string]: px(GRID_RESERVED_WIDTH),
+        ["--fcol-width" as string]: px(GRID_NATIVE_WIDTH),
+      }}
+    >
+      {/* Establishes the page's actual (scale-dependent) content height for
+          the outer div's overflow-y-auto to scroll — kept as a separate
+          inner element so the outer div itself stays exactly h-screen
+          (100vh); a min-height on the outer div directly would win over
+          `h-screen`'s height:100vh whenever content is taller, making the
+          outer div itself grow to full content height instead of scrolling
+          internally — content would then overflow into a document-level
+          scrollbar instead (confirmed via a 15px viewport/clientWidth gap
+          matching a document scrollbar, when it should have had none). */}
       <div
-        className="figma-canvas-frame"
+        className="relative"
         style={{
-          ["--fc-width" as string]: px(CANVAS_WIDTH),
-          ["--fc-height" as string]: px(CANVAS_HEIGHT),
+          minHeight: `calc(${px(GRID_ANCHOR_TOP)} + ${px(GRID_NATIVE_HEIGHT)} * var(--fcol-scale) + ${px(FOOTER_GAP)} + ${px(FOOTER_GROUP_HEIGHT)} + ${px(PAGE_BOTTOM_PADDING)})`,
         }}
       >
-        <div className="figma-canvas-scaler">
-          <div className="figma-canvas-content">
-            <div
-              className="absolute text-[13px] text-[#696969] capitalize leading-[1.5]"
-              style={{ left: px(50), top: px(146), width: px(727), height: px(54) }}
-            >
-              <p>{STATEMENT_LINE_1}</p>
-              <p>{STATEMENT_LINE_2}</p>
-            </div>
-
-            {partsGallery.map((item, index) => {
-              const [x, y, w, h] = TILE_GEOM[index];
-              const isHovered = hoveredId === item.id;
-              const isInstagram = item.instagramUrl !== null;
-
-              const content = (
-                <div
-                  className="absolute overflow-hidden bg-neutral-200"
-                  style={{ left: px(x), top: px(y), width: px(w), height: px(h) }}
-                  onMouseEnter={() => setHoveredId(item.id)}
-                  onMouseLeave={() =>
-                    setHoveredId((current) => (current === item.id ? null : current))
-                  }
-                >
-                  {item.image && (
-                    <Image
-                      src={
-                        !isInstagram && isHovered && item.hoverImage ? item.hoverImage : item.image
-                      }
-                      alt={item.title}
-                      fill
-                      className={`object-cover transition-[filter] duration-200 ${
-                        isInstagram && isHovered ? "brightness-50" : ""
-                      }`}
-                    />
-                  )}
-                  {isHovered && <HoverInfo item={item} />}
-                </div>
-              );
-
-              return item.slug ? (
-                <Link key={item.id} href={`/caption/${item.slug}`}>
-                  {content}
-                </Link>
-              ) : (
-                <a key={item.id} href={item.instagramUrl!} target="_blank" rel="noreferrer">
-                  {content}
-                </a>
-              );
-            })}
-
-            <div
-              className="absolute"
-              style={{ left: px(925), top: px(6608.28125), width: px(69), height: px(87) }}
-            >
-              <Image src="/main/logo.png" alt="" fill className="object-contain" />
-            </div>
-            <p
-              className="absolute whitespace-nowrap text-[10px] text-[#818181]"
-              style={{ left: px(933), top: px(6688.28125), width: px(59) }}
-            >
-              Eunji Wang©
-            </p>
-          </div>
+        {/* Statement text: literally fixed, left margin never shrinks. */}
+        <div
+          className="absolute text-[10px] text-[#696969] capitalize leading-[1.4]"
+          style={{ left: px(LEFT_MARGIN), top: px(146), width: px(727) }}
+        >
+          <p>{STATEMENT_LINE_1}</p>
+          <p>{STATEMENT_LINE_2}</p>
         </div>
+
+      {/* Grid: anchor (left margin + literal top) never shrinks; only the
+          inner content scales, uniformly, once it would collide with the
+          nav menu (`.figma-collision-scale`, globals.css). */}
+      <div className="absolute" style={{ left: px(LEFT_MARGIN), top: px(GRID_ANCHOR_TOP) }}>
+        <div
+          className="relative"
+          style={{
+            width: px(GRID_NATIVE_WIDTH),
+            height: px(GRID_NATIVE_HEIGHT),
+            transform: "scale(var(--fcol-scale))",
+            transformOrigin: "top left",
+          }}
+        >
+          {partsGallery.map((item, index) => {
+            const [x, y, w, h] = TILE_GEOM[index];
+            const isHovered = hoveredId === item.id;
+            const isInstagram = item.instagramUrl !== null;
+
+            const content = (
+              <div
+                className="absolute overflow-hidden bg-neutral-200"
+                style={{ left: px(x), top: px(y), width: px(w), height: px(h) }}
+                onMouseEnter={() => setHoveredId(item.id)}
+                onMouseLeave={() =>
+                  setHoveredId((current) => (current === item.id ? null : current))
+                }
+              >
+                {item.image && (
+                  <Image
+                    src={!isInstagram && isHovered && item.hoverImage ? item.hoverImage : item.image}
+                    alt={item.title}
+                    fill
+                    className={`object-cover transition-[filter] duration-200 ${
+                      isInstagram && isHovered ? "brightness-50" : ""
+                    }`}
+                  />
+                )}
+                {isHovered && <HoverInfo item={item} />}
+              </div>
+            );
+
+            return item.slug ? (
+              <Link key={item.id} href={`/caption/${item.slug}`}>
+                {content}
+              </Link>
+            ) : (
+              <a key={item.id} href={item.instagramUrl!} target="_blank" rel="noreferrer">
+                {content}
+              </a>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Footer: always horizontally centered, literal fixed margin/size —
+          `top` tracks the grid's *current* (possibly scaled) bottom edge via
+          the same --fcol-scale custom property the grid's transform uses.
+          Centered via `50vw` (true viewport center), not `left-1/2` (50% of
+          this scrolling div's own content-box) — a vertical scrollbar
+          shrinks that content-box width, which would otherwise pull the
+          "always centered" logo a few px off from the actual viewport
+          center whenever the page needs to scroll (i.e. basically always). */}
+      <div
+        className="absolute -translate-x-1/2"
+        style={{
+          left: "50vw",
+          width: px(FOOTER_GROUP_WIDTH),
+          top: `calc(${px(GRID_ANCHOR_TOP)} + ${px(GRID_NATIVE_HEIGHT)} * var(--fcol-scale) + ${px(FOOTER_GAP)})`,
+        }}
+      >
+        <div className="relative" style={{ width: px(FOOTER_LOGO.w), height: px(FOOTER_LOGO.h) }}>
+          <Image src="/main/logo.png" alt="" fill className="object-contain" />
+        </div>
+        <p
+          className="absolute whitespace-nowrap text-[8px] text-[#818181]"
+          style={{ left: px(FOOTER_TEXT.x), top: px(FOOTER_TEXT.y), width: px(FOOTER_TEXT.w) }}
+        >
+          Eunji Wang©
+        </p>
+      </div>
       </div>
     </div>
   );

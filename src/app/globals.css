@@ -212,3 +212,45 @@ body {
   width: var(--fz-width);
   zoom: min(1, calc(100cqw / var(--fz-width)));
 }
+
+/*
+ * Figma collision-scale (width-driven local scale, bounded by neighboring
+ * fixed chrome instead of the full viewport).
+ *
+ * Replaces the old "everything scales together" rule for /main and /info:
+ * the header, nav menu, and intro-statement text are now literally fixed
+ * (no scale, ever), each anchored to a margin (left/right/center) that
+ * never shrinks. Only ONE area per page (PartsGallery/FurnitureGallery's
+ * tile grid, /info's CV image) still shrinks — but only far enough to avoid
+ * colliding with that fixed chrome, not with the raw viewport width. Above
+ * the collision point it renders at its native Figma size; below it, it
+ * shrinks uniformly as one rigid block (internal relative layout/gaps
+ * unchanged — same technique as `.figma-canvas-*`).
+ *
+ * `--fcol-reserved`: total non-canvas horizontal space to subtract from the
+ * viewport before comparing against the canvas's own native width — e.g.
+ * the canvas's own left margin + the fixed chrome's width + its own margin
+ * on the far side.
+ * `--fcol-width`: the canvas's native content width (Figma px, measured
+ * edge-to-edge across its own children, NOT the full frame width).
+ *
+ * The resulting `--fcol-scale` custom property inherits down to descendants
+ * — a sibling below the canvas (e.g. a footer whose own margin must stay
+ * fixed per "로고 마진값 고정") can reference it in its own `top` via
+ * `calc(canvasTop + nativeHeight * var(--fcol-scale) + fixedGap)` to track
+ * the canvas's current rendered height with no JS measurement.
+ *
+ * Usage: set on the scrolling ancestor —
+ *   <div class="figma-collision-scale h-screen overflow-y-auto" style="--fcol-reserved:153px; --fcol-width:1005px">
+ *     <div style="position:absolute; left:35px; top:185px">
+ *       <div style="transform: scale(var(--fcol-scale)); transform-origin: top left; width:1005px; height:4907.87px">
+ *         ...tiles at LOCAL coordinates (raw x - 35, raw y - 185)...
+ *       </div>
+ *     </div>
+ *   </div>
+ */
+.figma-collision-scale {
+  container-type: inline-size;
+  width: 100%;
+  --fcol-scale: min(1, calc((100cqw - var(--fcol-reserved)) / var(--fcol-width)));
+}

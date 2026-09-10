@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { EB_Garamond } from "next/font/google";
-import { useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { furnitureGallery, type GalleryItem } from "@/data/works";
 import { px } from "@/lib/figma-layout";
 import MainSideNav from "./MainSideNav";
@@ -12,66 +12,105 @@ import MainSideNav from "./MainSideNav";
 // "( N. )" here, per spec) — so only the dimensions line needs its own font.
 const ebGaramond = EB_Garamond({ subsets: ["latin"], weight: "400" });
 
-// Figma "/main.furniture" frame (get_metadata nodeId 23:1088): width=1920,
-// height=3127.
+// Figma "main.furniture" frame (get_metadata nodeId 117:74): width=1512,
+// height=2536.
 //
-// Same single-canvas approach as PartsGallery.tsx: statement text, grid, and
-// footer all live in ONE canvas scaled uniformly by the same
-// min(1, viewport/1920) factor as TopBar/MainSideNav's own
-// `.figma-fixed-scale` — see PartsGallery.tsx's comment for the full
-// rationale (an earlier "statement/footer/year-labels stay literally
-// fixed-px" split only matched Figma at exactly 1920px viewport width).
-const CANVAS_WIDTH = 1920;
-const CANVAS_HEIGHT = 3127;
+// Same site-wide rule change as PartsGallery.tsx: nothing scales together as
+// one composition anymore. Statement text is literally fixed-px, left
+// margin never shrinks (see LEFT_MARGIN below); only the tile grid (here,
+// "Group 268" — rectangles f1-f17 AND the four year labels, all in one
+// Figma group/local coordinate space) still shrinks, and only far enough to
+// avoid colliding with the nav menu — see PartsGallery.tsx's
+// `.figma-collision-scale` (globals.css) for the full mechanism.
+const LEFT_MARGIN = 35;
+const NAV_RESERVED_WIDTH = 78 + 40; // MainSideNav's own width + its fixed right margin
+const GRID_RESERVED_WIDTH = LEFT_MARGIN + NAV_RESERVED_WIDTH;
+
+// Grid anchor point: literally fixed (not scaled) — same convention as
+// PartsGallery.tsx, using "Group 268"'s own raw Figma x/y directly (both
+// tiles and year labels are already local to the group in the coordinates
+// below, unlike PartsGallery which had to compute this by hand across 53
+// loose tiles — this page's whole grid is one named Figma group already).
+const GRID_ANCHOR_TOP = 188;
+
+// Native (unscaled) grid content size — "Group 268"'s own declared
+// width/height, not the full 1512px frame width.
+const GRID_NATIVE_WIDTH = 1147.0001220703125;
+const GRID_NATIVE_HEIGHT = 2098.456298828125;
+
+// Explicit request: furniture's shrink point should line up with parts'
+// (viewport 1158px, not furniture's own true 1300px = 153 reserved +
+// 1147 native) — so the `--fcol-width` fed into the scale FORMULA below
+// uses parts' native grid width (PartsGallery.tsx's GRID_NATIVE_WIDTH), not
+// furniture's own (larger) one. GRID_NATIVE_WIDTH above is kept as-is for
+// the canvas's actual box size/footer-offset math, which must still reflect
+// furniture's true content — only the scale calculation is borrowed.
+//
+// Consequence: furniture's real content (1147px) is wider than this
+// borrowed reference (1005px), so at any given viewport the grid renders
+// slightly larger than the "safe" width that guarantees no collision with
+// the fixed nav menu. In practice only Rectangle f15 (the widest-reaching
+// tile, at local x=889-1147) ever extends far enough right to actually
+// reach the menu — and since the menu is `position:fixed` (fixed screen
+// position, doesn't scroll), that only happens while f15 happens to be
+// scrolled to the menu's on-screen vertical band. See the scroll-tracking
+// effect in `DesktopFurnitureGallery` below, which swaps the menu to white
+// text only during that specific window (matches the white-on-image
+// treatment already used by the hover text layers).
+const SCALE_REFERENCE_WIDTH = 1004.9998168945312;
 
 // x/y/width/height for each of the 17 tiles (node ids "Rectangle f1"
-// .."Rectangle f17"), read directly off get_metadata — not hand-tuned.
-// Unlike PartsGallery's TILE_GEOM, the Figma layer numbering here already
-// matches furnitureGallery's array order 1:1 (id N -> "Rectangle fN"), so no
-// separate index-remapping table is needed.
-//
-// Same fixed-canvas + uniform-scale approach as PartsGallery.tsx (see
-// CLAUDE.md "배치/크기 정확도" exception) — children keep exact Figma px
-// positions, the whole canvas scales to fit the viewport width via
-// `.figma-canvas-*` (globals.css), so it never needs horizontal scroll.
-// object-cover re-crops each existing photo (base and hover) to the new box
-// automatically — no change needed to how images render.
-//
-// NOTE: this revision's Figma frame also has a new "Group 237" spec-sheet
-// annotation ("(01.) Parts: foot sole..." + dimensions) floating near
-// Rectangle f1 — not implemented, since it wasn't part of what was asked
-// (rectangle/image resizing) and there's no established pattern for it yet.
+// .."Rectangle f17"), read directly off get_metadata and rebased to the
+// grid's own local origin (raw x - LEFT_MARGIN, raw y - GRID_ANCHOR_TOP) —
+// not hand-tuned. Figma's layer numbering already matches furnitureGallery's
+// array order 1:1 (id N -> "Rectangle fN"), so no index-remapping table is
+// needed here (unlike PartsGallery.tsx's PARTS_RECTANGLE_NUMBERS).
 const TILE_GEOM: [x: number, y: number, w: number, h: number][] = [
-  [50.97, 197.96, 436.09, 406.15],
-  [501.31, 197, 294.76, 405.9],
-  [810.57, 250.15, 217.55, 167.65],
-  [810.57, 431.84, 217.55, 167.65],
-  [51.52, 618.36, 375.94, 343.08],
-  [442.37, 618.36, 389.47, 343.08],
-  [50, 1075.17, 212.56, 172.64],
-  [50, 1262.78, 212.56, 249.48],
-  [277.52, 1075.17, 295.39, 437.09],
-  [588.3, 1075.47, 621.41, 436.82],
-  [50, 1527.23, 433.1, 391.19],
-  [498.07, 1527.23, 433.1, 391.19],
-  [946.13, 1527.23, 217.55, 168.65],
-  [946.13, 1710.85, 217.55, 207.57],
-  [1178.65, 1668.94, 327.32, 249.48],
-  [50, 2033.19, 502.95, 343.29],
-  [50.996, 2483.24, 502.95, 343.29],
+  [0.7598, 0.7598, 343.5506, 319.9658], // f1
+  [355.543, 0, 232.2079, 319.7617], // f2
+  [599.1719, 41.873, 171.3822, 132.0744], // f3
+  [599.1719, 185.0059, 171.3822, 132.0744], // f4
+  [1.1934, 331.9434, 296.1602, 270.2748], // f5
+  [309.1035, 331.9434, 306.8189, 270.2748], // f6
+  [0, 691.8184, 167.4514, 136.0051], // f7
+  [0, 839.6152, 167.4514, 196.5392], // f8
+  [179.2402, 691.8184, 232.7025, 344.3368], // f9
+  [424.0664, 692.0566, 489.5399, 344.1245], // f10
+  [0, 1047.9473, 341.192, 308.1735], // f11
+  [352.9844, 1047.9473, 341.192, 308.1735], // f12
+  [705.9668, 1047.9473, 171.3822, 132.8605], // f13
+  [705.9668, 1192.6016, 171.3822, 163.5206], // f14
+  [889.1406, 1159.582, 257.8595, 196.5392], // f15
+  [0, 1446.5391, 396.2231, 270.4379], // f16
+  [0.7852, 1801.0859, 396.2231, 270.4379], // f17
 ];
 
-// Year section labels (node ids 23:1097/23:1098/23:1099/23:1092), all at
-// x≈51.97 in the original 1920-wide frame — plain children of
-// `.figma-canvas-content` now, like everything else on this page, so they
-// scale together with the grid instead of needing a separate `cqw()`
-// position-tracking hack.
+// Year section labels — same local coordinate space as TILE_GEOM above
+// (part of the same "Group 268"), so they scale together with the grid via
+// the same `--fcol-scale` transform rather than needing a separate
+// position-tracking mechanism. All four share the same local x (~1.55px).
+const YEAR_LABEL_X = 1.5546875;
 const YEAR_LABELS: [year: string, y: number][] = [
-  ["2026", 976.15],
-  ["2025", 1932.91],
-  ["2024", 2390.99],
-  ["2021", 2840.99],
+  ["2026", 613.8105],
+  ["2025", 1367.5352],
+  ["2024", 1728.4082],
+  ["2021", 2082.918],
 ];
+
+// Footer group ("Group 264", node 120:384): logo + copyright, same
+// dimensions/local layout as PartsGallery.tsx's footer (always horizontally
+// centered — its x=729/w=54 sits exactly centered in the 1512-wide
+// reference frame). FOOTER_GAP is furniture's own value (grid native bottom
+// to logo top) — different from parts' since this grid is shorter.
+const FOOTER_GAP = 150.067138671875;
+const FOOTER_GROUP_WIDTH = 54;
+const FOOTER_GROUP_HEIGHT = 74.609375;
+const FOOTER_LOGO = { w: 54, h: 68.08695983886719 };
+const FOOTER_TEXT = { x: 6.26171875, y: 62.609375, w: 47 };
+// Frame height (2536) minus everything above it, kept as literal bottom
+// padding so the scroll container's height matches the design at scale 1.
+const PAGE_BOTTOM_PADDING =
+  2536 - (GRID_ANCHOR_TOP + GRID_NATIVE_HEIGHT + FOOTER_GAP + FOOTER_GROUP_HEIGHT);
 
 // Figma hard-breaks this into exactly two lines (node 23:1127 has two child
 // <p>s, not one wrapping paragraph) — the natural CSS wrap point at 727px
@@ -88,18 +127,18 @@ const STATEMENT_LINE_2 =
 function HoverInfo({ item }: { item: GalleryItem }) {
   if (!item.partsInfo) return null;
   return (
-    // Same margin/fonts as PartsGallery.tsx's hover text layer, just
-    // without the numbering line — every furniture item is one of the
-    // captioned 17, so the margin is always 19px (no name-only 17px case
-    // here).
-    <div className="pointer-events-none absolute bottom-[19px] left-[13px] right-[13px] flex flex-col text-white">
-      <div className="capitalize text-[20px] leading-[0] tracking-[-0.6px]">
+    // Same margin/fonts as PartsGallery.tsx's hover text layer (main.parts
+    // Figma frame, node 117:2), just without the numbering line — every
+    // furniture item is one of the captioned 17, so it's always the
+    // type+size variant (bottom-[12px], never the name-only bottom-[13px]).
+    <div className="pointer-events-none absolute bottom-[12px] left-[10px] right-[10px] flex flex-col text-white">
+      <div className="capitalize text-[15px] leading-[0] tracking-[-0.45px]">
         <p className="leading-[1.2]">Parts: {item.partsInfo.name}</p>
         {item.partsInfo.type && <p className="leading-[1.2]">Type: {item.partsInfo.type}</p>}
       </div>
       {item.partsInfo.dimensions && (
         <p
-          className={`${ebGaramond.className} mt-1 whitespace-pre-line lowercase text-[13px] leading-none tracking-[-0.39px]`}
+          className={`${ebGaramond.className} mt-[2px] whitespace-pre-line lowercase text-[10px] leading-none tracking-[-0.3px]`}
         >
           {item.partsInfo.dimensions}
         </p>
@@ -108,28 +147,57 @@ function HoverInfo({ item }: { item: GalleryItem }) {
   );
 }
 
-function DesktopFurnitureGallery() {
+type DesktopFurnitureGalleryProps = {
+  scrollRef: RefObject<HTMLDivElement | null>;
+  f15Ref: RefObject<HTMLAnchorElement | null>;
+};
+
+function DesktopFurnitureGallery({ scrollRef, f15Ref }: DesktopFurnitureGalleryProps) {
   const [hoveredId, setHoveredId] = useState<number | null>(null);
 
   return (
-    <div className="hidden h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] min-[800px]:block">
+    <div
+      ref={scrollRef}
+      className="figma-collision-scale hidden h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] min-[800px]:block"
+      style={{
+        ["--fcol-reserved" as string]: px(GRID_RESERVED_WIDTH),
+        ["--fcol-width" as string]: px(SCALE_REFERENCE_WIDTH),
+      }}
+    >
+      {/* Separate inner element carrying the page's actual (scale-dependent)
+          height, so the outer div stays exactly h-screen for its
+          overflow-y-auto to scroll internally — see PartsGallery.tsx's
+          identical comment for why a min-height directly on the outer div
+          breaks this (it wins over h-screen's height:100vh, pushing scroll
+          to the document instead). */}
       <div
-        className="figma-canvas-frame"
+        className="relative"
         style={{
-          ["--fc-width" as string]: px(CANVAS_WIDTH),
-          ["--fc-height" as string]: px(CANVAS_HEIGHT),
+          minHeight: `calc(${px(GRID_ANCHOR_TOP)} + ${px(GRID_NATIVE_HEIGHT)} * var(--fcol-scale) + ${px(FOOTER_GAP)} + ${px(FOOTER_GROUP_HEIGHT)} + ${px(PAGE_BOTTOM_PADDING)})`,
         }}
       >
-        <div className="figma-canvas-scaler">
-          <div className="figma-canvas-content">
-            <div
-              className="absolute text-[13px] text-[#696969] capitalize leading-[1.5]"
-              style={{ left: px(50), top: px(146), width: px(727), height: px(54) }}
-            >
-              <p>{STATEMENT_LINE_1}</p>
-              <p>{STATEMENT_LINE_2}</p>
-            </div>
+        {/* Statement text: literally fixed, left margin never shrinks. */}
+        <div
+          className="absolute text-[10px] text-[#696969] capitalize leading-[1.4]"
+          style={{ left: px(LEFT_MARGIN), top: px(146), width: px(727) }}
+        >
+          <p>{STATEMENT_LINE_1}</p>
+          <p>{STATEMENT_LINE_2}</p>
+        </div>
 
+        {/* Grid: anchor (left margin + literal top) never shrinks; only the
+            inner content (tiles + year labels, one Figma group) scales,
+            uniformly, once it would collide with the nav menu. */}
+        <div className="absolute" style={{ left: px(LEFT_MARGIN), top: px(GRID_ANCHOR_TOP) }}>
+          <div
+            className="relative"
+            style={{
+              width: px(GRID_NATIVE_WIDTH),
+              height: px(GRID_NATIVE_HEIGHT),
+              transform: "scale(var(--fcol-scale))",
+              transformOrigin: "top left",
+            }}
+          >
             {furnitureGallery.map((item, index) => {
               const [x, y, w, h] = TILE_GEOM[index];
               const isHovered = hoveredId === item.id;
@@ -137,6 +205,11 @@ function DesktopFurnitureGallery() {
               return (
                 <Link
                   key={item.id}
+                  // Rectangle f15 is index 14 (f1..f17, 0-based) — the
+                  // widest-reaching tile, tracked so the fixed nav menu can
+                  // swap to white text while it's scrolled behind it (see
+                  // SCALE_REFERENCE_WIDTH's comment and the effect below).
+                  ref={index === 14 ? f15Ref : undefined}
                   href={`/caption/${item.slug}`}
                   className="absolute overflow-hidden bg-neutral-200"
                   style={{ left: px(x), top: px(y), width: px(w), height: px(h) }}
@@ -161,26 +234,36 @@ function DesktopFurnitureGallery() {
             {YEAR_LABELS.map(([year, y]) => (
               <p
                 key={year}
-                className="absolute text-[13px] text-[#6f6f6f] capitalize leading-relaxed"
-                style={{ left: px(51.97), top: px(y) }}
+                className="absolute text-[10px] text-[#6f6f6f] capitalize leading-[1.5]"
+                style={{ left: px(YEAR_LABEL_X), top: px(y) }}
               >
                 {year}
               </p>
             ))}
-
-            <div
-              className="absolute"
-              style={{ left: px(925), top: px(3005.525390625), width: px(69), height: px(87) }}
-            >
-              <Image src="/main/logo.png" alt="" fill className="object-contain" />
-            </div>
-            <p
-              className="absolute whitespace-nowrap text-[10px] text-[#818181]"
-              style={{ left: px(933), top: px(3086.525390625), width: px(59) }}
-            >
-              Eunji Wang©
-            </p>
           </div>
+        </div>
+
+        {/* Footer: always horizontally centered via `50vw` (not `left-1/2`
+            — see PartsGallery.tsx's comment on why), literal fixed
+            margin/size; `top` tracks the grid's current scaled bottom edge
+            via the same --fcol-scale custom property. */}
+        <div
+          className="absolute -translate-x-1/2"
+          style={{
+            left: "50vw",
+            width: px(FOOTER_GROUP_WIDTH),
+            top: `calc(${px(GRID_ANCHOR_TOP)} + ${px(GRID_NATIVE_HEIGHT)} * var(--fcol-scale) + ${px(FOOTER_GAP)})`,
+          }}
+        >
+          <div className="relative" style={{ width: px(FOOTER_LOGO.w), height: px(FOOTER_LOGO.h) }}>
+            <Image src="/main/logo.png" alt="" fill className="object-contain" />
+          </div>
+          <p
+            className="absolute whitespace-nowrap text-[8px] text-[#818181]"
+            style={{ left: px(FOOTER_TEXT.x), top: px(FOOTER_TEXT.y), width: px(FOOTER_TEXT.w) }}
+          >
+            Eunji Wang©
+          </p>
         </div>
       </div>
     </div>
@@ -343,11 +426,46 @@ function MobileFurnitureGallery() {
   );
 }
 
+// The fixed nav menu's own on-screen rect — it never scrolls (position:
+// fixed) and its width/margin are themselves fixed (see MainSideNav.tsx),
+// so only its height (top/bottom) and left edge (viewport width dependent)
+// matter here. MENU_TOP/BOTTOM span both "furniture" (y=200) and "parts"
+// (y=215, +15 height) labels together.
+const MENU_TOP = 200;
+const MENU_BOTTOM = 230;
+const MENU_RESERVED_FROM_RIGHT = 78 + 40; // MainSideNav's own width + right margin
+
 export default function FurnitureGallery() {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const f15Ref = useRef<HTMLAnchorElement>(null);
+  const [menuOverlapsF15, setMenuOverlapsF15] = useState(false);
+
+  useEffect(() => {
+    const scrollEl = scrollRef.current;
+    const f15El = f15Ref.current;
+    if (!scrollEl || !f15El) return;
+
+    const checkOverlap = () => {
+      const rect = f15El.getBoundingClientRect();
+      const menuLeft = window.innerWidth - MENU_RESERVED_FROM_RIGHT;
+      setMenuOverlapsF15(
+        rect.right > menuLeft && rect.bottom > MENU_TOP && rect.top < MENU_BOTTOM,
+      );
+    };
+
+    checkOverlap();
+    scrollEl.addEventListener("scroll", checkOverlap, { passive: true });
+    window.addEventListener("resize", checkOverlap);
+    return () => {
+      scrollEl.removeEventListener("scroll", checkOverlap);
+      window.removeEventListener("resize", checkOverlap);
+    };
+  }, []);
+
   return (
     <>
-      <MainSideNav fixed />
-      <DesktopFurnitureGallery />
+      <MainSideNav fixed whiteOverlap={menuOverlapsF15} />
+      <DesktopFurnitureGallery scrollRef={scrollRef} f15Ref={f15Ref} />
       <MobileFurnitureGallery />
     </>
   );
