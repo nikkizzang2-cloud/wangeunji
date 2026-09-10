@@ -62,14 +62,23 @@
 - 상단에 작가 소개 문구, 하단에 로고·저작권 텍스트 포함 (parts와 동일)
 - 실제 사진은 아직 전달되지 않아 회색 placeholder 상태
 
-### `/caption/[slug]` (Figma 연동 완료, get_metadata nodeId 72:1167 "caption" / 72:1145 "caption.textframe" — 후자는 우측 캐러셀이 이미지를 다 돌고 텍스트 레이어가 뜬 상태)
-- parts(17개)와 furniture(17개, 동일한 작품)가 공유하는 17개 개별 페이지. `src/components/CaptionCarousel.tsx`
+### `/caption/[slug]` (Figma 연동 완료 — `src/components/CaptionCarousel.tsx`)
+- parts(17개)와 furniture(17개, 동일한 작품)가 공유하는 17개 개별 페이지.
 - 중앙 구분 영역을 기준으로 좌우에 큰 이미지/영상 스택 배치. 좌측은 끝까지 넘기면 바로 처음으로 순환하고, 우측은 끝까지 넘기면 이미지 스택 개수+1번째 "칸"에서 정보1(Parts/type/size)·정보2(for+전시)·정보3(date)·국영문 캡션 텍스트 레이어가 뜬 뒤 처음으로 순환한다 (`src/data/captionMedia.ts`가 각 work의 left/right 이미지 개수를 그대로 캐러셀 길이로 씀)
 - 이미지 크롭: 기본은 object-cover(꽉 채움), 가로가 세로보다 긴(landscape) 이미지만 예외로 가로 크기에 맞춰 object-contain (비율 왜곡 없이, 위아래 레터박스 허용)
-- 텍스트 레이어의 정보1~정보2~정보3~캡션 그룹 간 간격은 Figma의 개별 좌표(23px/31px/55px, 인스턴스마다 들쭉날쭉)를 그대로 옮기지 않고, 콘텐츠 길이가 달라져도 간격이 유지되도록 균일한 flex gap(24px)으로 통일했다 — 여백(아래 55px/오른쪽 78px)은 Figma 값 그대로 고정.
+- **세 개의 반응형 스테이지**, 전부 17개 work 공통:
+  - **`DesktopCaption`(뷰포트 폭 ≥1200px)**: 좌우 캐러셀 나란히. 폭에 따라 1885→1512→1200(native px 기준, get_metadata 72:1167/126:464/162:65)에서 캐러셀 박스 자체가 2단계로 줄어든다. 뷰포트 **높이**가 750px 이상이면 우측 텍스트 슬라이드·제목/설명 블록이 캐러셀 박스가 아니라 `position:fixed`로 실제 브라우저 뷰포트 기준(`bottom:35px`, 텍스트 슬라이드는 `right:48px` 추가)에 고정되어 화면이 줄어도 잘리지 않는다 — 750px 밑으로는 캐러셀 상대 반응형 마진(`captionRightMarginCss`/`captionBottomGapCss`/`titleBottomGapCss`)으로 돌아가 잘림을 허용한다. 캐러셀 자체는 `overflow-y-auto`라 높이가 부족하면 스크롤된다(상단바는 `fixed`라 무관하게 계속 떠 있음).
+    - 제목/설명(작업제목·작업설명) 박스는 기본 너비 173px(`SUBTITLE_WIDTH_NATIVE`) — 좌우 캐러셀이 좁아지면서 오른쪽 캐러셀과 22px(`TITLE_RIGHT_CLEARANCE_FLOOR`) 미만으로 가까워질 때만 더 줄어든다(`titleSubtitleWidthCss`). MidCaption/MobileCaption은 캐러셀이 하나뿐이라 이 조임 로직 없이 173px 고정. 세로 길이(줄바꿈)는 항상 제한 없이 늘어난다.
+    - 작업설명의 국문/영문은 완전히 분리된 두 문단(빈 줄만큼 벌어진 간격, `SUBTITLE_KO_EN_GAP=10px`) — 단 work-12(Distribution Board)는 예외로 간격 없이 붙는다(`subtitleKoEnGap()`).
+    - 좌우 캐러셀 사이 빈 공간(제목/설명이 있는 자리 포함)을 클릭하면 좌우 캐러셀이 동시에 다음으로 넘어간다 — 캐러셀을 각각 클릭했을 때는 그쪽만 넘어가는 동작을 그대로 유지. 클릭 가능한 모든 영역(좌/우 캐러셀, 중앙, Mid/Mobile 단일 캐러셀)에 `cursor-pointer` 적용.
+  - **`MidCaption`(800px < 폭 ≤ 1200px, get_metadata 168:111 "caption 1200")**: 캐러셀 1개로 통일되어 아래로 쌓임. 정보(Parts/for/date)와 국영문 캡션이 같은 높이에서 좌우로 나란히 배치.
+  - **`MobileCaption`(폭 < 800px, get_metadata 168:72 "cation 800")**: 정보 아래로 캡션까지 전부 한 컬럼으로 쭉 쌓임. 이미지는 615px가 상한이고, 뷰포트가 그보다 좁아지면 이미지만 비율 유지(`aspect-ratio`)하며 화면 폭에 맞춰 줄어들고, 나머지(간격/텍스트 박스 크기/폰트)는 전부 고정 px.
+  - `MidCaption`/`MobileCaption`은 `CompactCaption`이 캐러셀 상태(현재 인덱스)를 한 번만 계산해 공유한다 — 같은 슬라이드를 다르게 배치해서 보여주는 것뿐이라서.
+- 텍스트 프레임(정보1~정보2~정보3~캡션) 내부 폰트 크기·행간·그룹 간 간격은 get_metadata(72:1145/168:56/168:57 데스크톱, 168:111/168:72 Mid/Mobile) 실측치를 스테이지별로 그대로 쓴다 — Figma의 "균일 24px" 근사치는 폐기하고 스테이지마다 다른 실측 간격(예: 데스크톱은 13/10/44px, Mobile은 23/31/46px)을 쓴다. 캡션(국영문) 줄바꿈은 `break-keep`(단어/어절 중간에서 안 깨짐)이 항상 적용되고, 행간은 국문 1.7 / 영문 1.6(Figma 표기 1.5보다 사용자가 실제로 더 넓혀서 확정한 값)로 국영문이 다르게 간다.
 - 사각형/디렉토리 규칙: 사용자가 `/Users/isihyeon/Documents/eunji/image/caption/workNN-이름/{left,right}/`에 넣어준 파일을 파일명 앞자리 숫자 순으로 정렬(`left`는 `drawing*` 파일을 항상 마지막으로), `public/caption/work-NN/{left|right}-K.ext`로 리사이즈(최대 2400px)·재압축(JPEG q85, PNG→JPEG 변환 포함, 애니메이션 GIF·영상은 원본 유지)해서 옮긴다 — 원본이 개별 파일 최대 100MB대(총 1.2GB)라 그대로 커밋할 수 없었다.
-- `workTitleLines`/`workSubtitle`/`exhibition`/`year`/`captionKo`/`captionEn`은 아직 사용자가 실제 콘텐츠를 전달하지 않아 `null`(placeholder "TBD") 상태 — `partsInfo`(Parts/type/size)만 기존 `PARTS_INFO`를 그대로 재사용해 실제 값이 채워져 있다.
-- 스크롤 불가
+- `workTitleLines`/`workSubtitleKo`/`workSubtitleEn`/`exhibition`/`year`/`captionKo`/`captionEn`은 17개 전부 `src/data/captionContent.ts`(`CAPTION_CONTENT`)에 실제 콘텐츠로 채워져 있다 — 원본은 사용자의 Pages 문서(`/Users/isihyeon/Documents/eunji/text.pages`, PDF로 내보낸 `text.pdf`)를 그대로 옮긴 것. `workSubtitleKo`/`workSubtitleEn`은 원래 하나의 `workSubtitle` 문자열이었던 걸 분리한 것 — 국문은 Pretendard, 영문은 기본 폰트로 다르게 렌더링해야 해서 캡션(`captionKo`/`captionEn`)과 같은 패턴을 따른다. `partsInfo`(Parts/type/size)는 기존 `PARTS_INFO`를 그대로 재사용해 실제 값이 채워져 있다.
+- `captionKo`/`captionEn`은 **기본적으로 줄 사이 간격 없이 붙어서** 렌더링된다(`CaptionLines` in CaptionCarousel.tsx) — 원본 문서의 줄바꿈 대부분이 실제 문단 구분이 아니라 컬럼 폭에 따른 단순 개행이라서다(예: work-16/17의 두 줄은 사실 이어지는 한 문장). 배열 안의 **빈 문자열(`""`) 항목이 "여기 진짜 빈 줄이 있었다"는 표시**이고, 그다음 줄 앞에만 실제 문단 간격(`CAPTION_PARAGRAPH_GAP=10px`)이 붙는다. 이 마커는 사용자가 명시적으로 지목한 자리에만 쓴다 — 현재는 work-01("...（중략)"과 "• •..." 사이), work-07("...습니다." 와 "작업일지 서문" 사이), work-08("...유도한다."와 "작업일지 中" 사이) 세 곳뿐이고, 다른 work의 "작업일지 中" 같은 동일 패턴도 명시적으로 요청받기 전엔 건드리지 않는다.
+- 스크롤 불가(다만 `DesktopCaption`은 뷰포트가 캐러셀보다 낮을 때 세로 스크롤 허용, `CompactCaption`은 콘텐츠 길이가 뷰포트보다 길면 항상 세로 스크롤)
 
 ### `/info`
 - 좌측 CV 이미지 + 우측 Introduction(영문/국문)·Exhibition·Contact 섹션 (Figma 연동 완료, get_metadata nodeId 16:2)
@@ -79,7 +88,7 @@
 
 ## 데이터 구조 (`src/data/works.ts`)
 
-- `captionWorks` (17개): 캡션 페이지의 원본 데이터(slug/title + `/caption` 텍스트 레이어용 workTitleLines/workSubtitle/partsInfo/exhibition/year/captionKo/captionEn). parts와 furniture 갤러리가 이 슬러그를 공유한다.
+- `captionWorks` (17개): 캡션 페이지의 원본 데이터(slug/title + `/caption` 텍스트 레이어용 workTitleLines/workSubtitleKo/workSubtitleEn/partsInfo/exhibition/year/captionKo/captionEn). parts와 furniture 갤러리가 이 슬러그를 공유한다.
 - `partsGallery` (53개): 앞 17개는 `captionWorks`와 1:1로 연결(`slug` 존재), 나머지 36개는 `instagramUrl`만 존재.
 - `furnitureGallery` (17개): `captionWorks` 전체와 1:1로 연결.
 - 모든 `image`/`hoverImage`는 현재 `null` 플레이스홀더 — 실제 이미지는 Figma 연동 시 채운다.

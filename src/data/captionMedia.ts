@@ -229,7 +229,8 @@ export const CAPTION_MEDIA: Record<string, { left: CaptionMediaItem[]; right: Ca
   },
   "work-17": {
     left: [
-
+      { src: "/caption/work-17/left-1.jpg", type: "image", width: 1600, height: 2400 },
+      { src: "/caption/work-17/left-2.jpg", type: "image", width: 795, height: 1011 },
     ],
     right: [
       { src: "/caption/work-17/right-1.jpg", type: "image", width: 1600, height: 2400 },

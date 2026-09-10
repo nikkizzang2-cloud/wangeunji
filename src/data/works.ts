@@ -6,10 +6,11 @@ export type CaptionWork = {
   slug: string;
   title: string;
   // Everything below powers /caption/[slug] (get_design_context nodeId
-  // 72:1167 / 72:1145). Center title block ("작업제목"/"제목설명") content
-  // hasn't been supplied yet — stays null/placeholder until it is.
+  // 72:1167 / 72:1145). Center title block ("작업제목"/"제목설명") — real
+  // content from CAPTION_CONTENT, see its own file for where it came from.
   workTitleLines: string[] | null;
-  workSubtitle: string | null;
+  workSubtitleKo: string | null;
+  workSubtitleEn: string | null;
   // Right-carousel text layer's 정보1 (Parts/type/size), 정보2 ("for" +
   // exhibition — a string, except work-14 where the user gave an explicit
   // 4-line example), 정보3 (date), and Group 249 (Korean/English caption,
@@ -74,8 +75,6 @@ const RECTANGLE_TO_CAPTION_INDEX = new Map(
   PARTS_CAPTION_RECTANGLE_NUMBERS.map((rectangleNumber, index) => [rectangleNumber, index]),
 );
 
-// TODO: workTitleLines/workSubtitle (center title block) haven't been
-// supplied yet — stay null until they are.
 export const captionWorks: CaptionWork[] = Array.from({ length: CAPTION_COUNT }, (_, index) => {
   const id = index + 1;
   const slug = `work-${String(id).padStart(2, "0")}`;
@@ -84,8 +83,9 @@ export const captionWorks: CaptionWork[] = Array.from({ length: CAPTION_COUNT },
   return {
     slug,
     title: `Work ${String(id).padStart(2, "0")}`,
-    workTitleLines: null,
-    workSubtitle: null,
+    workTitleLines: content ? [content.workTitle] : null,
+    workSubtitleKo: content?.workSubtitleKo ?? null,
+    workSubtitleEn: content?.workSubtitleEn ?? null,
     partsInfo: content
       ? { name: content.name, type: content.type, dimensions: content.dimensions }
       : { name: "", type: "", dimensions: "" },

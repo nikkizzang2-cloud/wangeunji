@@ -8,35 +8,35 @@ import { CAPTION_MEDIA, type CaptionMediaItem } from "@/data/captionMedia";
 import { splitDimensionUnits } from "@/data/partsInfo";
 import { px } from "@/lib/figma-layout";
 
-// Figma "caption" pages — 5 reference frames spanning 4 responsive stages
-// (get_design_context nodeId 72:1167 / 126:464 / 162:65 / 154:47 / 154:63).
-// Complete overhaul of the old single `.figma-contain-scale` canvas: each
-// stage below has its own shrink rules (different margins floor at
-// different points, the carousel's own aspect ratio changes once then
-// holds), which a single uniform 2D transform can't express — same
+// Figma "caption" pages — 5 reference frames across 5 responsive stages
+// (get_design_context/get_metadata nodeId 72:1167 "caption" / 126:464 /
+// 162:65 / 154:47 for the three DesktopCaption width stages (1885/1512/1200
+// native px), 168:111 "caption 1200" for MidCaption (800-1200px), 168:72
+// "cation 800" for MobileCaption (<800px); 168:56/168:57 "caption.textframe"
+// give the text-frame-internal font/leading/gap values InfoAndCaption and
+// TitleBlock use everywhere below 1200px doesn't scale). Each stage has its
+// own shrink rules, which a single uniform 2D transform can't express — same
 // reasoning as /info's move to `clamp()`-driven custom CSS.
 //
 // TOPBAR_HEIGHT: matches TopBar.tsx's `h-16`.
 const TOPBAR_HEIGHT = 64;
-// Carousel top position across ALL of stages 1-3 — fixed, deliberately NOT
-// a function of viewport height. An earlier revision instead vertically
-// centered the pair within the space below the header (`100vh`-driven),
-// and later added a `min()` safety clamp shrinking the box when height was
-// short — both reverted per explicit user feedback: resizing the BROWSER
-// WINDOW's height shouldn't move or resize the carousel at all — width
-// changes drive width-based shrinking (the whole point of stages 1-3), but
-// height is plain crop-via-`overflow-hidden`, the same way a normal
-// non-scrolling page would behave, not an active reflow. 69 matches node
-// 72:1167's own native y (64 + 5).
+// Carousel top position across DesktopCaption's three width stages — fixed,
+// deliberately NOT a function of viewport height. An earlier revision
+// instead vertically centered the pair within the space below the header
+// (`100vh`-driven), and later added a `min()` safety clamp shrinking the box
+// when height was short — both reverted per explicit user feedback:
+// resizing the BROWSER WINDOW's height shouldn't move or resize the
+// carousel at all — width changes drive width-based shrinking (the whole
+// point of these stages), but height on its own just crops/scrolls (see
+// DesktopCaption's `overflow-y-auto` + the viewport-pinned text below). 69
+// matches node 72:1167's own native y (64 + 5).
 const CAROUSEL_TOP_OFFSET = TOPBAR_HEIGHT + 5;
 
 // Three breakpoint anchors, read directly off the reference frames' own
 // widths (each frame is named after its width): "caption 1920" (actual
 // width 1885, not literally 1920 — the user's rounded verbal number),
-// "caption 1512", "caption 1200". Below 1200, stage 4 takes over (single
-// carousel, see STAGE4_* below) — this REPLACES the old 800px mobile
-// breakpoint for this page specifically (the old separate <800
-// `MobileCaption` is gone; stage 4 now covers the whole <1200 range).
+// "caption 1512", "caption 1200". Below 1200, MidCaption/MobileCaption take
+// over (see their own constants below).
 const STAGE1_MIN_VW = 1885;
 const STAGE2_END_VW = 1512;
 const STAGE3_END_VW = 1200;
@@ -64,18 +64,8 @@ const CAPTION_RIGHT_MARGIN_FLOOR = 50;
 const CAPTION_BOTTOM_GAP_NATIVE = 55; // caption text block bottom -> its own carousel's bottom edge
 const CAPTION_BOTTOM_GAP_FLOOR = 12;
 
-// Title/subtitle block: the "작업제목"/"제목설명" pair. Width and the gap
-// between them stay constant across every stage (151px / 21px, confirmed
-// at all three reference frames) — only the subtitle's width additionally
-// narrows during stage 3 once the shrinking carousels leave less than
-// TITLE_RIGHT_CLEARANCE_FLOOR of room (see titleSubtitleWidthCss below).
-const TITLE_WIDTH = 151;
-const TITLE_SUBTITLE_GAP = 21;
-const SUBTITLE_WIDTH_NATIVE = 173;
-const TITLE_RIGHT_CLEARANCE_FLOOR = 22; // subtitle's right edge -> right carousel's left edge, stage 3 only
-
+const TITLE_WIDTH = 151; // "작업제목" box width, constant across every stage
 const INFO_LABEL_WIDTH = 91;
-const INFO_GAP = 24; // Figma's own per-instance gaps are inconsistent (23/31/55px) — one uniform gap instead, same fix as the old implementation already used
 const INFO_WIDTH = 325; // widest element (Group249/Group258, the ko/en caption text)
 
 // Linear interpolation as a CSS `calc()` string: `floor` at `vwAtFloor`,
@@ -131,6 +121,8 @@ const titleBottomGapCss = linearClamp(
   STAGE2_END_VW,
   STAGE1_MIN_VW,
 );
+// Below 750px viewport HEIGHT (see DesktopCaption), the viewport-pinned text
+// falls back to these — carousel-box-relative, cropping accepted.
 const captionRightMarginCss = linearClamp(
   CAPTION_RIGHT_MARGIN_FLOOR,
   CAPTION_RIGHT_MARGIN_NATIVE,
@@ -143,15 +135,6 @@ const captionBottomGapCss = linearClamp(
   STAGE2_END_VW,
   STAGE1_MIN_VW,
 );
-// Subtitle width: stays at its native 173px until the shrinking carousels
-// leave less than TITLE_RIGHT_CLEARANCE_FLOOR of room on its right, then
-// narrows just enough to keep that clearance — same "derived margin falls
-// out of other clamped values" trick as /info's row-mode right margin.
-// `var(--cap-w)` is the SAME carousel width driving both carousels, set
-// once on a shared ancestor (see DesktopCaption below).
-const titleSubtitleWidthCss = `min(${px(SUBTITLE_WIDTH_NATIVE)}, calc(100vw - 2 * var(--cap-w) - ${px(
-  TITLE_LEFT_FLOOR + TITLE_RIGHT_CLEARANCE_FLOOR,
-)}))`;
 
 const pretendard = localFont({
   src: "../../node_modules/pretendard/dist/web/static/woff2/Pretendard-Regular.woff2",
@@ -185,33 +168,47 @@ type CaptionCarouselProps = {
   work: CaptionWork;
 };
 
-type InfoAndCaptionProps = {
-  work: CaptionWork;
-  labelWidth: number;
-  gap: string | number;
-  fontSize: number;
-  // TODO(work-01 트라이얼): get_metadata(nodeId 168:56, "caption.textframe"
-  // 우측 박스)에서 뽑은 실측 폰트 크기/행간/그룹 간 간격을 그대로 재현한다.
-  // 확인되면 다른 work에도 적용할지 결정 — 그전까지 나머지는 기존
-  // fontSize/gap prop(11px, 균일 gap)을 그대로 쓴다.
-  trialSpacing?: boolean;
-};
+// Text-frame-internal values below (font sizes, leading, gaps between the
+// Parts/for/date rows and the ko/en caption block) are all read directly off
+// get_metadata(168:56, "caption.textframe" right box) raw x/y — e.g. "for"
+// label top(307) - Parts row bottom(246+48=294) = 13. Caption leading is
+// Korean 1.7 / English 1.6 per explicit request (Figma's own 1.5 read as too
+// tight once real content was in place); break-keep so lines only wrap at
+// word (Korean 어절) boundaries, never mid-word.
+const INFO_ROW_FONT_SIZE = 10;
+const PARTS_ROW_GAP = 13; // Parts/type/size row -> for row
+const FOR_ROW_GAP = 10; // for row -> date row
+const DATE_ROW_GAP = 44; // date row -> ko/en caption block
+const CAPTION_FONT_SIZE = 11;
+const CAPTION_KO_EN_GAP = 19; // Korean caption bottom(391+119) -> English caption top(529)
 
-// TRIAL_* below are all from get_metadata(168:56)'s raw x/y — e.g. "for"
-// label top(307) - Parts row bottom(246+48=294) = 13.
-const TRIAL_ROW_FONT_SIZE = 10;
-const TRIAL_PARTS_ROW_GAP = 13; // Parts/type/size row -> for row
-const TRIAL_FOR_ROW_GAP = 10; // for row -> date row
-const TRIAL_DATE_ROW_GAP = 44; // date row -> ko/en caption block
-const TRIAL_CAPTION_FONT_SIZE = 11;
-const TRIAL_KO_EN_GAP = 19; // Korean caption bottom(391+119) -> English caption top(529)
+// captionKo/captionEn lines render tight (no gap) by default — matching the
+// source document's own line wraps, which aren't all real paragraph breaks.
+// An empty-string entry ("") marks an actual blank line in the source: it's
+// skipped and instead adds a gap before the NEXT line, reproducing exactly
+// which breaks are "real" paragraphs vs. incidental wraps (explicit user
+// request — see captionContent.ts for which works use this marker).
+const CAPTION_PARAGRAPH_GAP = 10;
 
-// Shared right-carousel "text slide" content (정보1/2/3 + 한글/영문캡션) — one
-// definition so desktop's three stages and stage 4's static layout can't
-// drift apart. `gap`/`fontSize` differ per caller (stage 4 uses a plain
-// number, desktop stages use the same INFO_GAP/11px throughout) unless
-// `trialSpacing` overrides both with the work-01 trial's real numbers.
-function InfoAndCaption({ work, labelWidth, gap, fontSize, trialSpacing = false }: InfoAndCaptionProps) {
+function CaptionLines({ lines }: { lines: string[] }) {
+  return (
+    <>
+      {lines.map((line, index) => {
+        if (line === "") return null;
+        const gapBefore = index > 0 && lines[index - 1] === "";
+        return (
+          <p key={index} style={gapBefore ? { marginTop: px(CAPTION_PARAGRAPH_GAP) } : undefined}>
+            {line}
+          </p>
+        );
+      })}
+    </>
+  );
+}
+
+// Right-carousel "text slide" content (정보1/2/3 + 한글/영문캡션) — shared by
+// DesktopCaption's two viewport-height variants (see CarouselButton).
+function InfoAndCaption({ work }: { work: CaptionWork }) {
   const dimensionUnits = work.partsInfo.dimensions
     ? splitDimensionUnits(work.partsInfo.dimensions)
     : [];
@@ -224,22 +221,13 @@ function InfoAndCaption({ work, labelWidth, gap, fontSize, trialSpacing = false 
       : [work.exhibition]
     : ["TBD"];
 
-  const rowFontSize = trialSpacing ? TRIAL_ROW_FONT_SIZE : 11;
-  const captionFontSize = trialSpacing ? TRIAL_CAPTION_FONT_SIZE : fontSize;
-
   return (
     <div
       className="flex flex-col text-left text-black capitalize"
-      style={{
-        fontSize: px(rowFontSize),
-        gap: trialSpacing ? undefined : typeof gap === "number" ? px(gap) : gap,
-      }}
+      style={{ fontSize: px(INFO_ROW_FONT_SIZE) }}
     >
-      <div
-        className={`flex ${trialSpacing ? "leading-[1.6]" : "leading-[1.5]"}`}
-        style={trialSpacing ? { marginBottom: px(TRIAL_PARTS_ROW_GAP) } : undefined}
-      >
-        <div className="shrink-0 whitespace-nowrap" style={{ width: px(labelWidth) }}>
+      <div className="flex leading-[1.6]" style={{ marginBottom: px(PARTS_ROW_GAP) }}>
+        <div className="shrink-0 whitespace-nowrap" style={{ width: px(INFO_LABEL_WIDTH) }}>
           <p>Parts</p>
           <p>type</p>
           <p>size</p>
@@ -253,11 +241,8 @@ function InfoAndCaption({ work, labelWidth, gap, fontSize, trialSpacing = false 
         </div>
       </div>
 
-      <div
-        className="flex leading-[1.5]"
-        style={trialSpacing ? { marginBottom: px(TRIAL_FOR_ROW_GAP) } : undefined}
-      >
-        <div className="shrink-0 whitespace-nowrap" style={{ width: px(labelWidth) }}>
+      <div className="flex leading-[1.5]" style={{ marginBottom: px(FOR_ROW_GAP) }}>
+        <div className="shrink-0 whitespace-nowrap" style={{ width: px(INFO_LABEL_WIDTH) }}>
           for
         </div>
         <div>
@@ -267,73 +252,61 @@ function InfoAndCaption({ work, labelWidth, gap, fontSize, trialSpacing = false 
         </div>
       </div>
 
-      <div
-        className="flex leading-[1.5]"
-        style={trialSpacing ? { marginBottom: px(TRIAL_DATE_ROW_GAP) } : undefined}
-      >
-        <div className="shrink-0 whitespace-nowrap" style={{ width: px(labelWidth) }}>
+      <div className="flex leading-[1.5]" style={{ marginBottom: px(DATE_ROW_GAP) }}>
+        <div className="shrink-0 whitespace-nowrap" style={{ width: px(INFO_LABEL_WIDTH) }}>
           date
         </div>
         <div>{work.year ?? "TBD"}</div>
       </div>
 
-      {/* TODO(work-01 트라이얼): break-keep(word-break:keep-all) — 단어(국문은
-          어절) 경계에서만 줄바꿈, 단어 중간에서 깨지지 않도록. leading은 국문
-          1.7 / 영문 1.6로 따로 간다(사용자 요청). 다른 work는 trialSpacing이
-          false라 영향받지 않는다. */}
-      <div style={{ fontSize: px(captionFontSize) }} className={trialSpacing ? "" : "leading-[1.5]"}>
-        <div
-          className={`${pretendard.className} ${trialSpacing ? "break-keep leading-[1.7]" : ""}`}
-        >
-          {(work.captionKo ?? ["TBD"]).map((line, index) => (
-            <p key={index}>{line}</p>
-          ))}
+      <div style={{ fontSize: px(CAPTION_FONT_SIZE) }} className="break-keep">
+        <div className={`${pretendard.className} leading-[1.7]`}>
+          <CaptionLines lines={work.captionKo ?? ["TBD"]} />
         </div>
-        <div
-          className={trialSpacing ? "break-keep leading-[1.6]" : "mt-3"}
-          style={trialSpacing ? { marginTop: px(TRIAL_KO_EN_GAP) } : undefined}
-        >
-          {(work.captionEn ?? ["TBD"]).map((line, index) => (
-            <p key={index}>{line}</p>
-          ))}
+        <div className="leading-[1.6]" style={{ marginTop: px(CAPTION_KO_EN_GAP) }}>
+          <CaptionLines lines={work.captionEn ?? ["TBD"]} />
         </div>
       </div>
     </div>
   );
 }
 
-// TODO(work-01 트라이얼): get_metadata(168:57, "caption.textframe" 좌측
-// 박스)에서 뽑은 실측 제목-설명 간격/설명 박스 너비. 확인되면 다른 work에도
-// 적용할지 결정 — 그전까지 나머지는 기존 TITLE_SUBTITLE_GAP/
-// titleSubtitleWidthCss를 그대로 쓴다 (subtitleGap/subtitleWidth 미전달 시
-// 디폴트로 폴백).
-const TRIAL_TITLE_SUBTITLE_GAP = 17; // subtitle top(612) - title bottom(580+15) = 17
-const TRIAL_SUBTITLE_WIDTH = 218;
+// "작업제목"/"제목설명" pair. Title-subtitle gap 17px, get_metadata(168:57).
+const TITLE_SUBTITLE_GAP = 17;
+// Subtitle box's base width — holds at 173px, but on DesktopCaption's
+// >=1200px stage (see titleSubtitleWidthCss below) narrows further once the
+// shrinking carousels would otherwise leave less than
+// TITLE_RIGHT_CLEARANCE_FLOOR of room on its right; MidCaption/MobileCaption
+// (no second carousel closing in) just use this flat value directly.
+const SUBTITLE_WIDTH_NATIVE = 173;
+const TITLE_RIGHT_CLEARANCE_FLOOR = 22; // subtitle's right edge -> right carousel's left edge, DesktopCaption only
+// `var(--cap-w)` is the SAME carousel width driving both carousels, set
+// once on DesktopCaption's own root (see its `--cap-w` style var).
+const titleSubtitleWidthCss = `min(${px(SUBTITLE_WIDTH_NATIVE)}, calc(100vw - 2 * var(--cap-w) - ${px(
+  TITLE_LEFT_FLOOR + TITLE_RIGHT_CLEARANCE_FLOOR,
+)}))`;
 
-function TitleBlock({
-  work,
-  subtitleGap = TITLE_SUBTITLE_GAP,
-  subtitleWidth = titleSubtitleWidthCss,
-}: {
-  work: CaptionWork;
-  subtitleGap?: number;
-  subtitleWidth?: string | number;
-}) {
+// Gap between the Korean and English subtitle sentences — two separate
+// paragraphs (blank-line-sized gap), except work-12 ("Distribution Board"),
+// whose short one-line-each Ko/En pair stays flush with no gap.
+const SUBTITLE_KO_EN_GAP = 10;
+function subtitleKoEnGap(work: CaptionWork): number {
+  return work.slug === "work-12" ? 0 : SUBTITLE_KO_EN_GAP;
+}
+
+function TitleBlock({ work }: { work: CaptionWork }) {
   return (
     <>
-      <div style={{ width: px(TITLE_WIDTH) }}>
+      <div className="break-keep" style={{ width: px(TITLE_WIDTH) }}>
         {(work.workTitleLines ?? [work.title]).map((line, index) => (
           <p key={index}>{line}</p>
         ))}
       </div>
-      <div
-        className={`${pretendard.className} leading-[1.4]`}
-        style={{
-          marginTop: px(subtitleGap),
-          width: typeof subtitleWidth === "number" ? px(subtitleWidth) : subtitleWidth,
-        }}
-      >
-        {work.workSubtitle ?? "TBD"}
+      <div className="break-keep" style={{ marginTop: px(TITLE_SUBTITLE_GAP), width: titleSubtitleWidthCss }}>
+        <p className={`${pretendard.className} leading-[1.4]`}>{work.workSubtitleKo ?? "TBD"}</p>
+        <p className="leading-[1.4]" style={{ marginTop: px(subtitleKoEnGap(work)) }}>
+          {work.workSubtitleEn ?? "TBD"}
+        </p>
       </div>
     </>
   );
@@ -345,28 +318,19 @@ type CarouselButtonProps = {
   onAdvance: () => void;
   isTextSlide: boolean;
   item: CaptionMediaItem | undefined;
-  // TODO(work-01 트라이얼): 확인되면 모든 work로 일반화하고 이 prop과
-  // captionRightMarginCss/captionBottomGapCss 분기를 정리할 예정.
-  useFixedTextMargins?: boolean;
 };
 
-// One position for all of stages 1-3 (CAROUSEL_TOP_OFFSET, fixed — see its
-// own comment for why); only `--cap-w`/`--cap-h` (set on the ancestor,
-// width-driven) differ between stages.
-function CarouselButton({
-  side,
-  work,
-  onAdvance,
-  isTextSlide,
-  item,
-  useFixedTextMargins = false,
-}: CarouselButtonProps) {
+// One position for all of DesktopCaption's three width stages
+// (CAROUSEL_TOP_OFFSET, fixed — see its own comment for why); only
+// `--cap-w`/`--cap-h` (set on the ancestor, width-driven) differ between
+// stages.
+function CarouselButton({ side, work, onAdvance, isTextSlide, item }: CarouselButtonProps) {
   return (
     <button
       type="button"
       onClick={onAdvance}
       aria-label={side === "left" ? "Previous left image" : "Next right image"}
-      className="absolute overflow-hidden bg-[#f8f8f8]"
+      className="absolute cursor-pointer overflow-hidden bg-[#f8f8f8]"
       style={{
         [side]: 0,
         top: px(CAROUSEL_TOP_OFFSET),
@@ -375,33 +339,19 @@ function CarouselButton({
       }}
     >
       {!isTextSlide && item && <MediaFrame item={item} />}
-      {/* useFixedTextMargins (work-01 trial): above 750px viewport height,
-          the text lives OUTSIDE this overflow-hidden button (see
-          DesktopCaption's own `position:fixed` sibling) — this button's own
-          overflow-hidden box would otherwise clip a fixed-position child to
-          the shrinking carousel's box, defeating the point of pinning it to
-          the viewport. Below 750px, this is the fallback: the original
-          carousel-relative responsive margins, cropping accepted. */}
-      {isTextSlide && useFixedTextMargins && (
+      {/* Below 750px viewport height: the fallback, carousel-box-relative
+          responsive text position (cropping accepted below this height).
+          Above 750px, DesktopCaption renders the real text slide as a
+          `position:fixed` sibling instead — see its own comment for why
+          that can't live in here (this button is overflow-hidden). Plain
+          div, not its own button: it's already inside this clickable
+          button, so a click on it bubbles up to `onAdvance` for free. */}
+      {isTextSlide && (
         <div
           className="absolute flex flex-col [@media(min-height:750px)]:hidden"
           style={{ right: captionRightMarginCss, bottom: captionBottomGapCss, width: px(INFO_WIDTH) }}
         >
-          <InfoAndCaption
-            work={work}
-            labelWidth={INFO_LABEL_WIDTH}
-            gap={INFO_GAP}
-            fontSize={12}
-            trialSpacing
-          />
-        </div>
-      )}
-      {isTextSlide && !useFixedTextMargins && (
-        <div
-          className="absolute flex flex-col"
-          style={{ right: captionRightMarginCss, bottom: captionBottomGapCss, width: px(INFO_WIDTH) }}
-        >
-          <InfoAndCaption work={work} labelWidth={INFO_LABEL_WIDTH} gap={INFO_GAP} fontSize={12} />
+          <InfoAndCaption work={work} />
         </div>
       )}
     </button>
@@ -429,30 +379,18 @@ function DesktopCaption({ work }: CaptionCarouselProps) {
 
   const isRightTextSlide = rightIndex === rightCount;
 
-  // TODO(트라이얼, work-01 한정): 이 구간(양쪽 캐러셀이 같이 보이는 >=1200px
-  // 전체)에서:
-  // 1. 사진 캐러셀: 세로 스크롤을 허용해서(overflow-y-auto) 캐러셀 높이가
-  //    뷰포트보다 클 때 사진이 잘리지 않게 한다 — 상단바는 `fixed`라 이
-  //    컨테이너의 스크롤과 무관하게 계속 떠 있는다.
-  // 2. 텍스트(정보/캡션, 제목/설명): 뷰포트 높이 >= 750px에서는 캐러셀 박스가
-  //    아니라 실제 브라우저 뷰포트 기준(bottom:35, 정보/캡션은 우측 48px
-  //    추가)으로 고정 위치시켜 화면이 줄어도 잘리지 않게 하고, 750px 밑으로는
-  //    기존 캐러셀 상대 반응형 마진으로 되돌아가 잘림을 허용한다.
-  // 3. 텍스트 프레임 내부 폰트 크기/행간/그룹 간 간격은 get_metadata(168:56,
-  //    168:57)의 실측치를 그대로 쓴다.
-  // 확인되면 모든 work로 일반화하고 이 분기들을 정리할 예정.
-  const isTrial = work.slug === "work-01";
-
   return (
     // "1200" here must match STAGE3_END_VW by hand (Tailwind needs a
-    // literal string) — paired with Stage4Caption's `max-[1200px]` below on
+    // literal string) — paired with CompactCaption's `max-[1200px]` below on
     // the SAME value so there's no 1px gap at exactly 1200 (max-[Npx]
     // compiles to strictly <N, so same-N pairing is what makes the two
     // ranges meet exactly — same fix as /info's breakpoint pairing bug).
+    // overflow-y-auto (not hidden): lets a viewport shorter than the
+    // carousel's own height scroll instead of clipping the photo — the
+    // fixed header stays put regardless, since it's `position:fixed`,
+    // independent of this container's scroll.
     <div
-      className={`relative hidden h-screen bg-[#f8f8f8] min-[1200px]:block ${
-        isTrial ? "overflow-y-auto" : "overflow-hidden"
-      }`}
+      className="relative hidden h-screen overflow-y-auto bg-[#f8f8f8] min-[1200px]:block"
       style={{
         ["--cap-w" as string]: carouselWidthCss,
         ["--cap-h" as string]: carouselHeightCss,
@@ -464,7 +402,6 @@ function DesktopCaption({ work }: CaptionCarouselProps) {
         onAdvance={advanceLeft}
         isTextSlide={false}
         item={leftCount > 0 ? media.left[leftIndex] : undefined}
-        useFixedTextMargins={isTrial}
       />
       <CarouselButton
         side="right"
@@ -472,122 +409,124 @@ function DesktopCaption({ work }: CaptionCarouselProps) {
         onAdvance={advanceRight}
         isTextSlide={isRightTextSlide}
         item={rightCount > 0 ? media.right[rightIndex] : undefined}
-        useFixedTextMargins={isTrial}
       />
 
-      {/* work-01 trial, viewport height >= 750px: the right carousel's text
-          slide, pinned to the real browser viewport (NOT nested inside
-          CarouselButton's own overflow-hidden box, which would clip a
-          `position:fixed` child right back down to the shrinking carousel's
-          size — see CarouselButton's own comment). Below 750px height,
-          CarouselButton renders its own carousel-relative fallback instead. */}
-      {isTrial && isRightTextSlide && (
-        <div
-          className="fixed hidden flex-col [@media(min-height:750px)]:flex"
+      {/* Viewport height >= 750px: the right carousel's text slide, pinned
+          to the real browser viewport (NOT nested inside CarouselButton's
+          own overflow-hidden box, which would clip a `position:fixed` child
+          right back down to the shrinking carousel's size). Below 750px,
+          CarouselButton renders its own carousel-relative fallback instead.
+          Own button + onClick: it lives outside CarouselButton entirely, so
+          without this it isn't clickable at all — the earlier bug where
+          clicking the caption text didn't advance the photo. */}
+      {isRightTextSlide && (
+        <button
+          type="button"
+          onClick={advanceRight}
+          aria-label="Next right image"
+          className="fixed hidden cursor-pointer flex-col [@media(min-height:750px)]:flex"
           style={{ bottom: px(35), right: px(48), width: px(INFO_WIDTH) }}
         >
-          <InfoAndCaption
-            work={work}
-            labelWidth={INFO_LABEL_WIDTH}
-            gap={INFO_GAP}
-            fontSize={12}
-            trialSpacing
-          />
-        </div>
+          <InfoAndCaption work={work} />
+        </button>
       )}
 
-      {/* Title/subtitle: bottom-anchored to the LEFT carousel's own bottom
-          edge (grows upward as content lengthens, per spec — never drops
-          below the carousel). This wrapper matches the carousel's own box
-          exactly (same top + height), so the inner block's `bottom: X`
-          resolves against `var(--cap-h)` — a plain CSS length, not the
-          viewport — meaning it tracks the carousel's height (width-driven,
-          correct) without also reacting to the viewport's OWN height (not
-          correct — reverted per explicit feedback, see CAROUSEL_TOP_OFFSET's
-          comment). work-01 trial overrides this below: same viewport-pin
-          concept as the info/caption block above, left position unchanged. */}
-      {isTrial ? (
-        <>
-          <div
-            className="fixed hidden flex-col text-[10px] leading-[1.5] capitalize [@media(min-height:750px)]:flex"
-            style={{ left: `calc(var(--cap-w) + ${titleLeftMarginCss})`, bottom: px(35) }}
-          >
-            <TitleBlock
-              work={work}
-              subtitleGap={TRIAL_TITLE_SUBTITLE_GAP}
-              subtitleWidth={TRIAL_SUBTITLE_WIDTH}
-            />
-          </div>
-          <div
-            className="absolute [@media(min-height:750px)]:hidden"
-            style={{
-              left: `calc(var(--cap-w) + ${titleLeftMarginCss})`,
-              top: px(CAROUSEL_TOP_OFFSET),
-              height: "var(--cap-h)",
-            }}
-          >
-            <div
-              className="absolute flex flex-col text-[10px] leading-[1.5] capitalize"
-              style={{ left: 0, bottom: titleBottomGapCss }}
-            >
-              <TitleBlock
-                work={work}
-                subtitleGap={TRIAL_TITLE_SUBTITLE_GAP}
-                subtitleWidth={TRIAL_SUBTITLE_WIDTH}
-              />
-            </div>
-          </div>
-        </>
-      ) : (
+      {/* Center gap between the two carousels: clicking anywhere in it
+          advances BOTH carousels together, while each carousel's own button
+          still advances only itself. Two separate buttons per height
+          variant rather than one wrapping the title: an invisible one spans
+          the full carousel height/width-gap for the empty space, and the
+          title itself is ALSO its own button, kept at its exact original
+          position/size (left-aligned, fixed box — see TitleBlock/
+          titleBottomGapCss) — wrapping it in a flex container to "advance
+          both" broke that (turned it into a full-width flex item, which
+          read as center-aligned instead of the fixed-size, left-aligned box
+          it should stay). Both buttons call the identical handler, so which
+          one a click lands on doesn't matter. */}
+      <button
+        type="button"
+        onClick={() => {
+          advanceLeft();
+          advanceRight();
+        }}
+        aria-label="Next image (both)"
+        className="fixed hidden cursor-pointer [@media(min-height:750px)]:block"
+        style={{
+          left: "var(--cap-w)",
+          right: "var(--cap-w)",
+          top: px(CAROUSEL_TOP_OFFSET),
+          height: "var(--cap-h)",
+        }}
+      />
+      {/* Viewport height >= 750px: bottom-anchored to the real browser
+          viewport (position:fixed, bottom:35 — NOT the carousel box), same
+          as the info/caption text slide above. */}
+      <button
+        type="button"
+        onClick={() => {
+          advanceLeft();
+          advanceRight();
+        }}
+        aria-label="Next image (both)"
+        className="fixed hidden cursor-pointer flex-col text-left text-[10px] leading-[1.5] capitalize [@media(min-height:750px)]:flex"
+        style={{ left: `calc(var(--cap-w) + ${titleLeftMarginCss})`, bottom: px(35) }}
+      >
+        <TitleBlock work={work} />
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          advanceLeft();
+          advanceRight();
+        }}
+        aria-label="Next image (both)"
+        className="absolute cursor-pointer [@media(min-height:750px)]:hidden"
+        style={{
+          left: "var(--cap-w)",
+          right: "var(--cap-w)",
+          top: px(CAROUSEL_TOP_OFFSET),
+          height: "var(--cap-h)",
+        }}
+      />
+      {/* Below 750px viewport height: bottom-anchored to the LEFT carousel's
+          own bottom edge (grows upward as content lengthens, per spec —
+          never drops below the carousel) — see titleBottomGapCss's comment
+          on DesktopCaption's earlier revision for why. */}
+      <button
+        type="button"
+        onClick={() => {
+          advanceLeft();
+          advanceRight();
+        }}
+        aria-label="Next image (both)"
+        className="absolute cursor-pointer [@media(min-height:750px)]:hidden"
+        style={{
+          left: `calc(var(--cap-w) + ${titleLeftMarginCss})`,
+          top: px(CAROUSEL_TOP_OFFSET),
+          height: "var(--cap-h)",
+        }}
+      >
         <div
-          className="absolute"
-          style={{
-            left: `calc(var(--cap-w) + ${titleLeftMarginCss})`,
-            top: px(CAROUSEL_TOP_OFFSET),
-            height: "var(--cap-h)",
-          }}
+          className="absolute flex flex-col text-left text-[10px] leading-[1.5] capitalize"
+          style={{ left: 0, bottom: titleBottomGapCss }}
         >
-          <div
-            className="absolute flex flex-col text-[12px] leading-[1.5] capitalize"
-            style={{ left: 0, bottom: titleBottomGapCss }}
-          >
-            <TitleBlock work={work} />
-          </div>
+          <TitleBlock work={work} />
         </div>
-      )}
+      </button>
     </div>
   );
 }
 
-// Stage 4 (viewport < 1200px, node 154:63 "caption 1121"): single carousel,
-// title/info/caption stacked below it — same concept as the site's other
-// pages' mobile treatment ("모바일에서 작업한 것처럼"), but with this frame's
-// own numbers (NOT the old <800px MobileCaption's — that component and its
-// separate breakpoint are retired; this stage now covers the whole <1200
-// range). Purely fixed-px, no scaling of any kind ("화면이 줄어든다고 요소들의
-// 크기가 바뀌지않아") — normal document flow handles the page's height
-// (which genuinely varies with caption length), so no zoom/canvas
-// mechanism is needed here at all, simpler than the old MobileCaption.
-const STAGE4_CAROUSEL = { x: 0, y: 67, w: 645, h: 859 };
-const STAGE4_TITLE_X = 35;
-const STAGE4_CAROUSEL_TO_TITLE_GAP = 32; // carousel bottom -> title top
-const STAGE4_SUBTITLE_WIDTH = 170;
-const STAGE4_SUBTITLE_TO_INFO_GAP = 119;
-const STAGE4_INFO_VALUE_WIDTH = 170; // Group257's own width (261) minus INFO_LABEL_WIDTH (91)
-const STAGE4_CAPTION_GAP = 84; // info column's right edge -> caption column's left edge
-const STAGE4_CAPTION_KO_WIDTH = 305;
-const STAGE4_CAPTION_EN_WIDTH = 325;
-const STAGE4_CAPTION_KO_EN_GAP = 35;
-
 // Reorders one work's left+right media into a single list for the unified
-// stage-4 carousel: all photos first, then any video/gif, then the drawing
-// (if any) last — "사진 - 영상,gif(있다면) - 드로잉". Per the user, the LAST
-// item of the `left` array (if it's an image, not a video) is always the
-// drawing — the same "drawing files sort last within left" convention the
-// original import already applied (see captionMedia.ts), reused here
-// rather than re-detected some other way (there's no explicit "this is a
-// drawing" flag in the data).
-function buildStage4MediaOrder(media: { left: CaptionMediaItem[]; right: CaptionMediaItem[] }) {
+// MidCaption/MobileCaption carousel: all photos first, then any video/gif,
+// then the drawing (if any) last — "사진 - 영상,gif(있다면) - 드로잉". Per the
+// user, the LAST item of the `left` array (if it's an image, not a video) is
+// always the drawing — the same "drawing files sort last within left"
+// convention the original import already applied (see captionMedia.ts),
+// reused here rather than re-detected some other way (there's no explicit
+// "this is a drawing" flag in the data).
+function buildCompactMediaOrder(media: { left: CaptionMediaItem[]; right: CaptionMediaItem[] }) {
   const isVideoOrGif = (item: CaptionMediaItem) =>
     item.type === "video" || item.src.toLowerCase().endsWith(".gif");
 
@@ -601,33 +540,25 @@ function buildStage4MediaOrder(media: { left: CaptionMediaItem[]; right: Caption
   return drawing ? [...photos, ...videosAndGifs, drawing] : [...photos, ...videosAndGifs];
 }
 
-type Stage4TrialProps = {
+type CompactStageProps = {
   work: CaptionWork;
   orderedMedia: CaptionMediaItem[];
   index: number;
   advance: () => void;
 };
 
-// TODO(work-01 트라이얼): <1200px 구간을 800px에서 한 번 더 나눈다 —
-// get_metadata(168:111, "caption 1200")가 이 상단(800px<폭<=1200px) 값,
-// get_metadata(168:72, "cation 800")가 하단(폭<800px) 값. 확인되면 다른
-// work에도 적용할지 결정 — 그전까지 나머지 16개 work는 기존 단일 Stage4
-// 그대로 쓴다. 800 기준은 TopBar의 기존 MOBILE_BREAKPOINT=800과 동일한
-// min-[800px] 페어링 관례를 따른다(800 자체는 상단 쪽).
-
 // --- 800px < 폭 <= 1200px ("caption 1200", node 168:111) ---
-const TRIAL_UPPER_CAROUSEL = { x: 0, y: 67, w: 600, h: 799 };
-const TRIAL_UPPER_TITLE_X = 35;
-const TRIAL_UPPER_CAROUSEL_TO_TITLE_GAP = 24; // image bottom(67+799) -> title top(890)
-const TRIAL_UPPER_TITLE_SUBTITLE_GAP = 17; // title bottom(890+15) -> subtitle top(922)
-const TRIAL_UPPER_SUBTITLE_WIDTH = 218;
-const TRIAL_UPPER_SUBTITLE_TO_INFO_GAP = 104; // subtitle bottom(922+65) -> info row top(1091)
-const TRIAL_UPPER_INFO_COLUMN_WIDTH = 339; // info column left(36) -> caption column left(375)
-const TRIAL_UPPER_CAPTION_KO_WIDTH = 297;
-const TRIAL_UPPER_CAPTION_EN_WIDTH = 317;
-const TRIAL_UPPER_CAPTION_KO_EN_GAP = 19; // ko bottom(1091+119) -> en top(1229)
+const MID_CAROUSEL = { x: 0, y: 67, w: 600, h: 799 };
+const MID_TITLE_X = 35;
+const MID_CAROUSEL_TO_TITLE_GAP = 24; // image bottom(67+799) -> title top(890)
+const MID_TITLE_SUBTITLE_GAP = 17; // title bottom(890+15) -> subtitle top(922)
+const MID_SUBTITLE_TO_INFO_GAP = 104; // subtitle bottom(922+65) -> info row top(1091)
+const MID_INFO_COLUMN_WIDTH = 339; // info column left(36) -> caption column left(375)
+const MID_CAPTION_KO_WIDTH = 297;
+const MID_CAPTION_EN_WIDTH = 317;
+const MID_CAPTION_KO_EN_GAP = 19; // ko bottom(1091+119) -> en top(1229)
 
-function Stage4CaptionTrialUpper({ work, orderedMedia, index, advance }: Stage4TrialProps) {
+function MidCaption({ work, orderedMedia, index, advance }: CompactStageProps) {
   const dimensionUnits = work.partsInfo.dimensions
     ? splitDimensionUnits(work.partsInfo.dimensions)
     : [];
@@ -644,45 +575,45 @@ function Stage4CaptionTrialUpper({ work, orderedMedia, index, advance }: Stage4T
           type="button"
           onClick={advance}
           aria-label="Next image"
-          className="relative block overflow-hidden bg-[#f8f8f8]"
+          className="relative block cursor-pointer overflow-hidden bg-[#f8f8f8]"
           style={{
-            marginLeft: px(TRIAL_UPPER_CAROUSEL.x),
-            marginTop: px(TRIAL_UPPER_CAROUSEL.y),
-            width: px(TRIAL_UPPER_CAROUSEL.w),
-            height: px(TRIAL_UPPER_CAROUSEL.h),
+            marginLeft: px(MID_CAROUSEL.x),
+            marginTop: px(MID_CAROUSEL.y),
+            width: px(MID_CAROUSEL.w),
+            height: px(MID_CAROUSEL.h),
           }}
         >
           {orderedMedia.length > 0 && <MediaFrame item={orderedMedia[index]} />}
         </button>
 
         <div
-          className="text-[10px] leading-[1.5] capitalize"
-          style={{ marginLeft: px(TRIAL_UPPER_TITLE_X), marginTop: px(TRIAL_UPPER_CAROUSEL_TO_TITLE_GAP) }}
+          className="break-keep text-[10px] leading-[1.5] capitalize"
+          style={{ marginLeft: px(MID_TITLE_X), marginTop: px(MID_CAROUSEL_TO_TITLE_GAP) }}
         >
           <div style={{ width: px(TITLE_WIDTH) }}>
             {(work.workTitleLines ?? [work.title]).map((line, i) => (
               <p key={i}>{line}</p>
             ))}
           </div>
-          <div
-            className={`${pretendard.className} leading-[1.4]`}
-            style={{ marginTop: px(TRIAL_UPPER_TITLE_SUBTITLE_GAP), width: px(TRIAL_UPPER_SUBTITLE_WIDTH) }}
-          >
-            {work.workSubtitle ?? "TBD"}
+          <div style={{ marginTop: px(MID_TITLE_SUBTITLE_GAP), width: px(SUBTITLE_WIDTH_NATIVE) }}>
+            <p className={`${pretendard.className} leading-[1.4]`}>{work.workSubtitleKo ?? "TBD"}</p>
+            <p className="leading-[1.4]" style={{ marginTop: px(subtitleKoEnGap(work)) }}>
+              {work.workSubtitleEn ?? "TBD"}
+            </p>
           </div>
         </div>
 
         {/* Info (Parts/for/date) and ko/en captions sit side by side at the
             same top edge (not stacked) — the info column's width is fixed at
-            TRIAL_UPPER_INFO_COLUMN_WIDTH so the caption column always starts
-            at the same x regardless of how wide the info values render. */}
+            MID_INFO_COLUMN_WIDTH so the caption column always starts at the
+            same x regardless of how wide the info values render. */}
         <div
           className="flex"
-          style={{ marginLeft: px(TRIAL_UPPER_TITLE_X), marginTop: px(TRIAL_UPPER_SUBTITLE_TO_INFO_GAP) }}
+          style={{ marginLeft: px(MID_TITLE_X), marginTop: px(MID_SUBTITLE_TO_INFO_GAP) }}
         >
           <div
             className="flex flex-col text-left text-black capitalize"
-            style={{ width: px(TRIAL_UPPER_INFO_COLUMN_WIDTH), fontSize: px(10) }}
+            style={{ width: px(MID_INFO_COLUMN_WIDTH), fontSize: px(10) }}
           >
             <div className="flex leading-[1.6]" style={{ marginBottom: px(13) }}>
               <div className="shrink-0 whitespace-nowrap" style={{ width: px(INFO_LABEL_WIDTH) }}>
@@ -719,19 +650,15 @@ function Stage4CaptionTrialUpper({ work, orderedMedia, index, advance }: Stage4T
           <div className="flex flex-col" style={{ fontSize: px(11) }}>
             <div
               className={`${pretendard.className} break-keep leading-[1.7]`}
-              style={{ width: px(TRIAL_UPPER_CAPTION_KO_WIDTH) }}
+              style={{ width: px(MID_CAPTION_KO_WIDTH) }}
             >
-              {(work.captionKo ?? ["TBD"]).map((line, i) => (
-                <p key={i}>{line}</p>
-              ))}
+              <CaptionLines lines={work.captionKo ?? ["TBD"]} />
             </div>
             <div
               className="break-keep leading-[1.6]"
-              style={{ marginTop: px(TRIAL_UPPER_CAPTION_KO_EN_GAP), width: px(TRIAL_UPPER_CAPTION_EN_WIDTH) }}
+              style={{ marginTop: px(MID_CAPTION_KO_EN_GAP), width: px(MID_CAPTION_EN_WIDTH) }}
             >
-              {(work.captionEn ?? ["TBD"]).map((line, i) => (
-                <p key={i}>{line}</p>
-              ))}
+              <CaptionLines lines={work.captionEn ?? ["TBD"]} />
             </div>
           </div>
         </div>
@@ -746,25 +673,24 @@ function Stage4CaptionTrialUpper({ work, orderedMedia, index, advance }: Stage4T
 // it shrinks fluidly with the viewport (aspect-ratio preserved) — per
 // explicit request, EVERY other element on this stage (gaps, text box
 // widths, font sizes) stays literally fixed-px regardless of viewport width.
-const TRIAL_LOWER_CAROUSEL_MAX_WIDTH = 615;
-const TRIAL_LOWER_CAROUSEL_ASPECT = "615 / 820";
-const TRIAL_LOWER_CAROUSEL_TOP = 67;
-const TRIAL_LOWER_TITLE_X = 35;
-const TRIAL_LOWER_CAROUSEL_TO_TITLE_GAP = 30; // image bottom(67+820) -> title top(917)
-const TRIAL_LOWER_TITLE_WIDTH = 145;
-const TRIAL_LOWER_TITLE_SUBTITLE_GAP = 24; // title bottom(917+30) -> subtitle top(971)
-const TRIAL_LOWER_SUBTITLE_WIDTH = 209;
-const TRIAL_LOWER_SUBTITLE_TO_INFO_GAP = 96; // subtitle bottom(971+65) -> info row top(1132)
-const TRIAL_LOWER_INFO_ROW_FONT_SIZE = 11;
-const TRIAL_LOWER_PARTS_ROW_GAP = 23; // Parts row bottom(1132+51) -> for row top(1206)
-const TRIAL_LOWER_FOR_ROW_GAP = 31; // for row bottom(1206+17) -> date row top(1254)
-const TRIAL_LOWER_DATE_TO_CAPTION_GAP = 46; // date row bottom(1254+17) -> caption group top(1317)
-const TRIAL_LOWER_CAPTION_FONT_SIZE = 12;
-const TRIAL_LOWER_CAPTION_KO_WIDTH = 305;
-const TRIAL_LOWER_CAPTION_EN_WIDTH = 325;
-const TRIAL_LOWER_CAPTION_KO_EN_GAP = 35; // ko bottom(1317+126) -> en top(1478)
+const MOBILE_CAROUSEL_MAX_WIDTH = 615;
+const MOBILE_CAROUSEL_ASPECT = "615 / 820";
+const MOBILE_CAROUSEL_TOP = 67;
+const MOBILE_TITLE_X = 35;
+const MOBILE_CAROUSEL_TO_TITLE_GAP = 30; // image bottom(67+820) -> title top(917)
+const MOBILE_TITLE_WIDTH = 145;
+const MOBILE_TITLE_SUBTITLE_GAP = 24; // title bottom(917+30) -> subtitle top(971)
+const MOBILE_SUBTITLE_TO_INFO_GAP = 96; // subtitle bottom(971+65) -> info row top(1132)
+const MOBILE_INFO_ROW_FONT_SIZE = 11;
+const MOBILE_PARTS_ROW_GAP = 23; // Parts row bottom(1132+51) -> for row top(1206)
+const MOBILE_FOR_ROW_GAP = 31; // for row bottom(1206+17) -> date row top(1254)
+const MOBILE_DATE_TO_CAPTION_GAP = 46; // date row bottom(1254+17) -> caption group top(1317)
+const MOBILE_CAPTION_FONT_SIZE = 11; // unified with Desktop/Mid (was 12, the "cation 800" frame's own value)
+const MOBILE_CAPTION_KO_WIDTH = 305;
+const MOBILE_CAPTION_EN_WIDTH = 325;
+const MOBILE_CAPTION_KO_EN_GAP = 35; // ko bottom(1317+126) -> en top(1478)
 
-function Stage4CaptionTrialLower({ work, orderedMedia, index, advance }: Stage4TrialProps) {
+function MobileCaption({ work, orderedMedia, index, advance }: CompactStageProps) {
   const dimensionUnits = work.partsInfo.dimensions
     ? splitDimensionUnits(work.partsInfo.dimensions)
     : [];
@@ -781,44 +707,44 @@ function Stage4CaptionTrialLower({ work, orderedMedia, index, advance }: Stage4T
           type="button"
           onClick={advance}
           aria-label="Next image"
-          className="relative block overflow-hidden bg-[#f8f8f8]"
+          className="relative block cursor-pointer overflow-hidden bg-[#f8f8f8]"
           style={{
-            marginTop: px(TRIAL_LOWER_CAROUSEL_TOP),
-            width: `min(${px(TRIAL_LOWER_CAROUSEL_MAX_WIDTH)}, 100%)`,
-            aspectRatio: TRIAL_LOWER_CAROUSEL_ASPECT,
+            marginTop: px(MOBILE_CAROUSEL_TOP),
+            width: `min(${px(MOBILE_CAROUSEL_MAX_WIDTH)}, 100%)`,
+            aspectRatio: MOBILE_CAROUSEL_ASPECT,
           }}
         >
           {orderedMedia.length > 0 && <MediaFrame item={orderedMedia[index]} />}
         </button>
 
         <div
-          className="text-[10px] leading-[1.5] capitalize"
-          style={{ marginLeft: px(TRIAL_LOWER_TITLE_X), marginTop: px(TRIAL_LOWER_CAROUSEL_TO_TITLE_GAP) }}
+          className="break-keep text-[10px] leading-[1.5] capitalize"
+          style={{ marginLeft: px(MOBILE_TITLE_X), marginTop: px(MOBILE_CAROUSEL_TO_TITLE_GAP) }}
         >
-          <div style={{ width: px(TRIAL_LOWER_TITLE_WIDTH) }}>
+          <div style={{ width: px(MOBILE_TITLE_WIDTH) }}>
             {(work.workTitleLines ?? [work.title]).map((line, i) => (
               <p key={i}>{line}</p>
             ))}
           </div>
-          <div
-            className={`${pretendard.className} leading-[1.4]`}
-            style={{ marginTop: px(TRIAL_LOWER_TITLE_SUBTITLE_GAP), width: px(TRIAL_LOWER_SUBTITLE_WIDTH) }}
-          >
-            {work.workSubtitle ?? "TBD"}
+          <div style={{ marginTop: px(MOBILE_TITLE_SUBTITLE_GAP), width: px(SUBTITLE_WIDTH_NATIVE) }}>
+            <p className={`${pretendard.className} leading-[1.4]`}>{work.workSubtitleKo ?? "TBD"}</p>
+            <p className="leading-[1.4]" style={{ marginTop: px(subtitleKoEnGap(work)) }}>
+              {work.workSubtitleEn ?? "TBD"}
+            </p>
           </div>
         </div>
 
         {/* Info rows AND captions stacked in one column below them — unlike
-            the upper stage, there's no side-by-side caption column here. */}
+            MidCaption, there's no side-by-side caption column here. */}
         <div
           className="flex flex-col text-left text-black capitalize"
           style={{
-            marginLeft: px(TRIAL_LOWER_TITLE_X),
-            marginTop: px(TRIAL_LOWER_SUBTITLE_TO_INFO_GAP),
-            fontSize: px(TRIAL_LOWER_INFO_ROW_FONT_SIZE),
+            marginLeft: px(MOBILE_TITLE_X),
+            marginTop: px(MOBILE_SUBTITLE_TO_INFO_GAP),
+            fontSize: px(MOBILE_INFO_ROW_FONT_SIZE),
           }}
         >
-          <div className="flex leading-[1.5]" style={{ marginBottom: px(TRIAL_LOWER_PARTS_ROW_GAP) }}>
+          <div className="flex leading-[1.5]" style={{ marginBottom: px(MOBILE_PARTS_ROW_GAP) }}>
             <div className="shrink-0 whitespace-nowrap" style={{ width: px(INFO_LABEL_WIDTH) }}>
               <p>Parts</p>
               <p>type</p>
@@ -832,7 +758,7 @@ function Stage4CaptionTrialLower({ work, orderedMedia, index, advance }: Stage4T
               ))}
             </div>
           </div>
-          <div className="flex leading-[1.5]" style={{ marginBottom: px(TRIAL_LOWER_FOR_ROW_GAP) }}>
+          <div className="flex leading-[1.5]" style={{ marginBottom: px(MOBILE_FOR_ROW_GAP) }}>
             <div className="shrink-0 whitespace-nowrap" style={{ width: px(INFO_LABEL_WIDTH) }}>
               for
             </div>
@@ -842,29 +768,25 @@ function Stage4CaptionTrialLower({ work, orderedMedia, index, advance }: Stage4T
               ))}
             </div>
           </div>
-          <div className="flex leading-[1.5]" style={{ marginBottom: px(TRIAL_LOWER_DATE_TO_CAPTION_GAP) }}>
+          <div className="flex leading-[1.5]" style={{ marginBottom: px(MOBILE_DATE_TO_CAPTION_GAP) }}>
             <div className="shrink-0 whitespace-nowrap" style={{ width: px(INFO_LABEL_WIDTH) }}>
               date
             </div>
             <div>{work.year ?? "TBD"}</div>
           </div>
 
-          <div style={{ fontSize: px(TRIAL_LOWER_CAPTION_FONT_SIZE) }} className="break-keep">
+          <div style={{ fontSize: px(MOBILE_CAPTION_FONT_SIZE) }} className="break-keep">
             <div
               className={`${pretendard.className} leading-[1.7]`}
-              style={{ width: px(TRIAL_LOWER_CAPTION_KO_WIDTH) }}
+              style={{ width: px(MOBILE_CAPTION_KO_WIDTH) }}
             >
-              {(work.captionKo ?? ["TBD"]).map((line, i) => (
-                <p key={i}>{line}</p>
-              ))}
+              <CaptionLines lines={work.captionKo ?? ["TBD"]} />
             </div>
             <div
               className="leading-[1.6]"
-              style={{ marginTop: px(TRIAL_LOWER_CAPTION_KO_EN_GAP), width: px(TRIAL_LOWER_CAPTION_EN_WIDTH) }}
+              style={{ marginTop: px(MOBILE_CAPTION_KO_EN_GAP), width: px(MOBILE_CAPTION_EN_WIDTH) }}
             >
-              {(work.captionEn ?? ["TBD"]).map((line, i) => (
-                <p key={i}>{line}</p>
-              ))}
+              <CaptionLines lines={work.captionEn ?? ["TBD"]} />
             </div>
           </div>
         </div>
@@ -873,9 +795,12 @@ function Stage4CaptionTrialLower({ work, orderedMedia, index, advance }: Stage4T
   );
 }
 
-function Stage4Caption({ work }: CaptionCarouselProps) {
+// <1200px: MidCaption (800-1200px) and MobileCaption (<800px) share one
+// carousel index/advance handler (computed once here) since both render the
+// SAME current slide, just laid out differently.
+function CompactCaption({ work }: CaptionCarouselProps) {
   const media = CAPTION_MEDIA[work.slug] ?? { left: [], right: [] };
-  const orderedMedia = buildStage4MediaOrder(media);
+  const orderedMedia = buildCompactMediaOrder(media);
   const [index, setIndex] = useState(0);
 
   const advance = () => {
@@ -883,74 +808,12 @@ function Stage4Caption({ work }: CaptionCarouselProps) {
     setIndex((current) => (current + 1) % orderedMedia.length);
   };
 
-  const isTrial = work.slug === "work-01";
-
   return (
     // "1200" here must match STAGE3_END_VW by hand (Tailwind needs a
     // literal string) — see DesktopCaption's matching comment.
     <div className="hidden h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] max-[1200px]:block">
-      {isTrial ? (
-        <>
-          <Stage4CaptionTrialUpper work={work} orderedMedia={orderedMedia} index={index} advance={advance} />
-          <Stage4CaptionTrialLower work={work} orderedMedia={orderedMedia} index={index} advance={advance} />
-        </>
-      ) : (
-        <div className="relative pb-16">
-          <button
-            type="button"
-            onClick={advance}
-            aria-label="Next image"
-            className="relative block overflow-hidden bg-[#f8f8f8]"
-            style={{
-              marginLeft: px(STAGE4_CAROUSEL.x),
-              marginTop: px(STAGE4_CAROUSEL.y),
-              width: px(STAGE4_CAROUSEL.w),
-              height: px(STAGE4_CAROUSEL.h),
-            }}
-          >
-            {orderedMedia.length > 0 && <MediaFrame item={orderedMedia[index]} />}
-          </button>
-
-          <div
-            className="text-[12px] leading-[1.5] capitalize"
-            style={{ marginLeft: px(STAGE4_TITLE_X), marginTop: px(STAGE4_CAROUSEL_TO_TITLE_GAP) }}
-          >
-            <div style={{ width: px(TITLE_WIDTH) }}>
-              {(work.workTitleLines ?? [work.title]).map((line, i) => (
-                <p key={i}>{line}</p>
-              ))}
-            </div>
-            <div
-              className={`${pretendard.className} leading-[1.4]`}
-              style={{ marginTop: px(TITLE_SUBTITLE_GAP), width: px(STAGE4_SUBTITLE_WIDTH) }}
-            >
-              {work.workSubtitle ?? "TBD"}
-            </div>
-          </div>
-
-          <div
-            className="flex"
-            style={{ marginLeft: px(STAGE4_TITLE_X), marginTop: px(STAGE4_SUBTITLE_TO_INFO_GAP) }}
-          >
-            <div style={{ width: px(INFO_LABEL_WIDTH + STAGE4_INFO_VALUE_WIDTH) }}>
-              <InfoAndCaption work={work} labelWidth={INFO_LABEL_WIDTH} gap={INFO_GAP} fontSize={12} />
-            </div>
-
-            <div className="flex flex-col text-[12px] leading-[1.5]" style={{ marginLeft: px(STAGE4_CAPTION_GAP) }}>
-              <div className={pretendard.className} style={{ width: px(STAGE4_CAPTION_KO_WIDTH) }}>
-                {(work.captionKo ?? ["TBD"]).map((line, index) => (
-                  <p key={index}>{line}</p>
-                ))}
-              </div>
-              <div style={{ marginTop: px(STAGE4_CAPTION_KO_EN_GAP), width: px(STAGE4_CAPTION_EN_WIDTH) }}>
-                {(work.captionEn ?? ["TBD"]).map((line, index) => (
-                  <p key={index}>{line}</p>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <MidCaption work={work} orderedMedia={orderedMedia} index={index} advance={advance} />
+      <MobileCaption work={work} orderedMedia={orderedMedia} index={index} advance={advance} />
     </div>
   );
 }
@@ -959,7 +822,7 @@ export default function CaptionCarousel({ work }: CaptionCarouselProps) {
   return (
     <>
       <DesktopCaption work={work} />
-      <Stage4Caption work={work} />
+      <CompactCaption work={work} />
     </>
   );
 }

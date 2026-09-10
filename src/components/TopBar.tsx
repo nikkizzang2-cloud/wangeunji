@@ -43,10 +43,11 @@ export default function TopBar() {
   // Explicit user brief: the caption page's nav text is a different fixed
   // color (#b9b9b9) than everywhere else on the site — everything else
   // (position/size/links) stays identical, so this is a single color
-  // override rather than a separate caption-specific header variant.
+  // override rather than a separate caption-specific header variant. On
+  // caption pages specifically, it also turns black on hover.
   const pathname = usePathname();
   const isCaptionPage = pathname?.startsWith("/caption/") ?? false;
-  const textColorClass = isCaptionPage ? "text-[#b9b9b9]" : "";
+  const textColorClass = isCaptionPage ? "text-[#b9b9b9] hover:text-black" : "";
 
   return (
     <header className="fixed inset-x-0 top-0 z-40 h-16 overflow-hidden bg-transparent">

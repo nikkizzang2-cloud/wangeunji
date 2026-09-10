@@ -1,22 +1,36 @@
-// Real per-work content for /caption/[slug]'s right-carousel text layer
-// (정보1 Parts/type/size, 정보2 "for", 정보3 date, Group 249 캡션), supplied
-// by the user directly for this page — a separate, more specific data set
-// than the shared PARTS_INFO used by the parts/furniture hover layers (e.g.
-// some names carry an article here, "a vessel lock", that PARTS_INFO's
-// "vessel lock" doesn't — matches the Figma reference's own "a vessel lock"
-// wording, see CaptionCarousel.tsx). "×" is used uniformly for the
+// Real per-work content for /caption/[slug] — the center title block
+// (workTitle/workSubtitleKo/workSubtitleEn) and the right-carousel text
+// layer (정보1 Parts/type/size, 정보2 "for", 정보3 date, Group 249 캡션) —
+// transcribed directly from the user's Pages/PDF document
+// (/Users/isihyeon/Documents/eunji/text.pdf). "×" is used uniformly for the
 // dimensions' multiplication sign even where the user typed a plain "x"
 // (work-16/17), matching every other work here and the rest of the site.
 //
+// `workTitle` is the single title line (e.g. "Caster, 2026");
+// `workSubtitleKo`/`workSubtitleEn` are the Korean/English sentences right
+// below it — two separate fields (rather than one mixed string) so
+// TitleBlock can render Korean in Pretendard and English in the page's
+// default font, same split as captionKo/captionEn.
+//
 // `exhibition` is a string, except work-14 where the user gave it as an
 // explicit 4-line example of "모든 글은 단위로 줄바꿈" — kept as that array.
-// `captionKo`/`captionEn` are arrays of lines exactly as the user wrote them
-// (including mid-sentence breaks after a comma, e.g. work-16/17, and
-// section labels like "작업일지 中" as their own line) per that same
-// instruction. work-17 has no "For:" line in the source, so `exhibition` is
-// omitted there.
+// `captionKo`/`captionEn` lines render TIGHT (no gap) by default — most of
+// the user's own line breaks here are just the source document's column
+// wrap, not real paragraph breaks (e.g. work-16/17's two lines are one
+// continuous sentence). An explicit `""` entry marks an actual blank line in
+// the source and adds a real paragraph gap before the next line (see
+// CaptionLines in CaptionCarousel.tsx) — used only where the user
+// specifically called it out: work-01 (before "• •..."), work-07 (before
+// "작업일지 서문"), work-08 (before "작업일지 中"). Every other work's
+// multi-line captions stay tight on purpose, even where a heading-like
+// "작업일지 中" line appears — only touch this where explicitly instructed.
+// work-17 has no "For:" line in the source, so `exhibition` is omitted
+// there.
 
 export type CaptionContent = {
+  workTitle: string;
+  workSubtitleKo: string;
+  workSubtitleEn: string;
   name: string;
   type: string;
   dimensions: string;
@@ -28,6 +42,9 @@ export type CaptionContent = {
 
 export const CAPTION_CONTENT: Record<string, CaptionContent> = {
   "work-01": {
+    workTitle: "Caster, 2026",
+    workSubtitleKo: "연결된 구조 속에서 그들의 질문을 담고 굴러갈 구르마 세 대.",
+    workSubtitleEn: "Three Gurumas that will roll through the interconnected structure, carrying their questions.",
     name: "caster",
     type: "wagon",
     dimensions: "550 × 270 × 770 mm",
@@ -36,14 +53,19 @@ export const CAPTION_CONTENT: Record<string, CaptionContent> = {
     captionKo: [
       "작업일지 中",
       "텍스트 기반 미디어인 아워익스프레스의 콘텐츠에는 흐름이 있다. 이 문장을 읽은 뒤에 다음 문장을 읽을 수 있고, 이 페이지를 넘겨야 다음 페이지에 도달한다. 텍스트는 이러한 순서 속에서 소화되며 의미를 형성한다. 아워익스프레스가 결과보다 과정 속의 인물들을 기록하는 이유 역시 그러한데, (중략)",
+      "",
       "• • 한 칸 한 칸 연결된 구조 속에서 그들의 질문을 담고 굴러갈 구르마 세 대.",
     ],
     captionEn: [
       "The content of Our Express, a text-based media, has a flow. Once you read one sentence, you can move on to the next; you have to turn the page to reach the one that follows. Text is absorbed in this sequence, and meaning emerges through it. This is also why Our Express chooses to document people in the midst of their processes rather than their outcomes. (…)",
+      "",
       "• •Three guruma carts, rolling along within a structure of interconnected cells, carrying their questions with them.",
     ],
   },
   "work-02": {
+    workTitle: "Channel, 2026",
+    workSubtitleKo: "도자 유약 시편공을 거치하는 벽 선반.",
+    workSubtitleEn: "A wall rack for displaying ceramic glaze test pieces.",
     name: "steel channel",
     type: "a rack",
     dimensions: "700 × 1800 × 180 mm",
@@ -58,6 +80,9 @@ export const CAPTION_CONTENT: Record<string, CaptionContent> = {
     ],
   },
   "work-03": {
+    workTitle: "Muffler, 2026",
+    workSubtitleKo: "구미코의 옷장은 아홉 개의 원이 안과 밖을 넘나드는 서커스와 같길 바랐다.",
+    workSubtitleEn: "Gumiko's wardrobe was imagined as a circus where nine circles move freely between inside and outside.",
     name: "muffler",
     type: "system hanger",
     dimensions: "100 × 100 × 1800 mm (main)",
@@ -74,6 +99,9 @@ export const CAPTION_CONTENT: Record<string, CaptionContent> = {
     ],
   },
   "work-04": {
+    workTitle: "Level, 2026",
+    workSubtitleKo: "수평기의 기울임으로 읽어내 돌봄의 때를 알려주는 화병.",
+    workSubtitleEn: "A vase that signals the time for care by reading the tilt of a spirit level.",
     name: "level",
     type: "vase",
     dimensions: "600 × 20 × 1500 mm",
@@ -89,6 +117,9 @@ export const CAPTION_CONTENT: Record<string, CaptionContent> = {
     ],
   },
   "work-05": {
+    workTitle: "Pipe Bracket, 2026",
+    workSubtitleKo: "작업복과 일상복을 함께 걸 수 있는 한 쌍의 행거.",
+    workSubtitleEn: "A pair of hangers for both workwear and everyday clothes.",
     name: "a pipe bracket",
     type: "a hanger",
     dimensions: "900 × 200 × 200 mm",
@@ -104,6 +135,9 @@ export const CAPTION_CONTENT: Record<string, CaptionContent> = {
     ],
   },
   "work-06": {
+    workTitle: "Vessel Lock, 2026",
+    workSubtitleKo: "Eimalive 개인전 <LAYERED WORKS>를 위한 아카이빙북 기물 디자인.",
+    workSubtitleEn: "Archival book display furniture designed for Eimalive's solo exhibition, <LAYERED WORKS>",
     name: "a vessel lock",
     type: "a bookshelf",
     dimensions: "340 × 1940 × 600 mm",
@@ -119,6 +153,9 @@ export const CAPTION_CONTENT: Record<string, CaptionContent> = {
     ],
   },
   "work-07": {
+    workTitle: "Swivel, 2025",
+    workSubtitleKo: "종이를 투과하는 빛으로 직접 조도를 조절하는 조명.",
+    workSubtitleEn: "A lamp that allows direct control of illuminance through light penetrating paper.",
     name: "swivel",
     type: "lamp, or paper rack",
     dimensions: "865 × 460 × 350 mm",
@@ -126,17 +163,19 @@ export const CAPTION_CONTENT: Record<string, CaptionContent> = {
     year: "2025",
     captionKo: [
       "Swivel Lamp는 페이지를 넘기듯, 종이에 투과되는 빛의 양을 조절하여 감상자가 직접 독서 환경의 조도를 형성할 수 있는 조명입니다. 노출 제본 원리를 구현하는 swivel 파츠를 통해 12개의 원고를 한 권의 가구로 열람하실 수 있습니다.",
+      "",
       "작업일지 서문",
-      "덴탈 크리틱 기획서를 읽고 내가 해석한 이번 비평장은 일종의 대화장이었다. 각 가구는 비평의 대화를 돕는 도구로서, 어떻게 독자를 대화장으로 유도할 것인지에 집중하여 디자인하였다.",
-      "가구의 형태는 어떠한 행위를 이끌고, 그 행위가 반복되면 태도가 된다는 단순한 원리를 생각해보자. 내가 고려해야 할 사실은 다음과 같다. 원고를 발견하고, 집어 들고, 읽고, 다시 놓는 그 일련의 독해 행위들이 가구에서 일어난다는 사실과 이곳은 비평이 실천적 태도로 이루어지는 비평장이라는 것. 나의 가구는 이를 돕는 도구여야 한다.",
+      "덴탈 크리틱 기획서를 읽고 내가 해석한 이번 비평장은 일종의 대화장이었다. 각 가구는 비평의 대화를 돕는 도구로서, 어떻게 독자를 대화장으로 유도할 것인지에 집중하여 디자인하였다. 가구의 형태는 어떠한 행위를 이끌고, 그 행위가 반복되면 태도가 된다는 단순한 원리를 생각해보자. 내가 고려해야 할 사실은 다음과 같다. 원고를 발견하고, 집어 들고, 읽고, 다시 놓는 그 일련의 독해 행위들이 가구에서 일어난다는 사실과 이곳은 비평이 실천적 태도로 이루어지는 비평장이라는 것. 나의 가구는 이를 돕는 도구여야 한다.",
     ],
     captionEn: [
       "Swivel Lamp is an interactive light that transforms the act of reading into a sensory experience. Like turning pages, its adjustable swivel parts control the light passing through paper, shaping the atmosphere of viewing. It compiles 12 manuscripts into a single, book-like piece of furniture.",
-      "After reading the proposal for Dental Critic, I understood the site of this critique as a kind of space for dialogue. Each piece of furniture was designed as a tool to facilitate this dialogue, focusing on how it could invite the reader into the space of conversation.",
-      "Let us consider a simple principle: the form of furniture prompts an action, and when that action is repeated, it becomes an attitude. There were two things I needed to keep in mind. First, the act of reading—the process of discovering a manuscript, picking it up, reading it, and placing it back—would take place through the furniture itself. Second, this was a space of critique where criticism is practiced as an active attitude. My furniture, therefore, needed to be a tool that could support this process.",
+      "After reading the proposal for Dental Critic, I understood the site of this critique as a kind of space for dialogue. Each piece of furniture was designed as a tool to facilitate this dialogue, focusing on how it could invite the reader into the space of conversation. Let us consider a simple principle: the form of furniture prompts an action, and when that action is repeated, it becomes an attitude. There were two things I needed to keep in mind. First, the act of reading—the process of discovering a manuscript, picking it up, reading it, and placing it back—would take place through the furniture itself. Second, this was a space of critique where criticism is practiced as an active attitude. My furniture, therefore, needed to be a tool that could support this process.",
     ],
   },
   "work-08": {
+    workTitle: "T Track, 2025",
+    workSubtitleKo: "벽기둥과 일체화되어 전면 문을 움직여 텍스트 노출을 조절하는 선반.",
+    workSubtitleEn: "A shelf integrated with a wall column, adjusting text exposure by moving the front door.",
     name: "T track",
     type: "paper shelf",
     dimensions: "210 × 1700 × 20 mm",
@@ -144,6 +183,7 @@ export const CAPTION_CONTENT: Record<string, CaptionContent> = {
     year: "2025",
     captionKo: [
       "벽기둥과 일체화된 Hide&Seek shelf는 선반 전면을 따라 움직이는 앞문과 그에 따라 달라지는 텍스트 노출 면적을 통해 보는 이의 호기심을 유도한다.",
+      "",
       "작업일지 中",
       "폐관된 은우미술관의 잔재로 남아 있는 실내대문과 벽기둥은 이곳이 지닌 고유한 몰입장치처럼 보였다. 입구를 입구답게..",
     ],
@@ -153,6 +193,9 @@ export const CAPTION_CONTENT: Record<string, CaptionContent> = {
     ],
   },
   "work-09": {
+    workTitle: "Piano Hinge, 2025",
+    workSubtitleKo: "개폐되는 텍스트 캐비넷.",
+    workSubtitleEn: "An opening and closing text cabinet.",
     name: "piano hinge (180° rotation rate)",
     type: "display, or cabinet",
     dimensions: "700 × 1300 × 300 mm",
@@ -171,6 +214,9 @@ export const CAPTION_CONTENT: Record<string, CaptionContent> = {
     ],
   },
   "work-10": {
+    workTitle: "Metaball, 2025",
+    workSubtitleKo: "문이 벽이 되고, 벽이 문이 되는 공간.",
+    workSubtitleEn: "A room where doors become walls and walls become doors.",
     name: "a stainless steel ball",
     type: "a fitting room",
     dimensions: "1440 × 1400 × 2010 mm",
@@ -185,6 +231,9 @@ export const CAPTION_CONTENT: Record<string, CaptionContent> = {
     ],
   },
   "work-11": {
+    workTitle: "Foot Sole, 2025",
+    workSubtitleKo: "책가도에서 튀어 나온 사형제 파티션.",
+    workSubtitleEn: "A four-brothers partition emerging from the Chaekgado.",
     name: "a foot sole",
     type: "a space divider",
     dimensions:
@@ -200,6 +249,9 @@ export const CAPTION_CONTENT: Record<string, CaptionContent> = {
     ],
   },
   "work-12": {
+    workTitle: "Distribution Board, 2025",
+    workSubtitleKo: "발 달린 조각 기둥.",
+    workSubtitleEn: "A column with feet.",
     name: "a distribution board",
     type: "a storage cabinet",
     dimensions: "335 × 400 × 2300 mm",
@@ -209,6 +261,9 @@ export const CAPTION_CONTENT: Record<string, CaptionContent> = {
     captionEn: ["A column with feet."],
   },
   "work-13": {
+    workTitle: "Socket Coupling, 2025",
+    workSubtitleKo: "보관의 형태는 그 대상의 물성이 정한다는 것을 생각해보자.",
+    workSubtitleEn: "Let us consider that the form of storage is determined by the materiality of its object.",
     name: "a socket coupling",
     type: "a carpet carrier",
     dimensions: "200 × 200 × 670 mm",
@@ -227,6 +282,9 @@ export const CAPTION_CONTENT: Record<string, CaptionContent> = {
     ],
   },
   "work-14": {
+    workTitle: "Snap Ring, 2025",
+    workSubtitleKo: "스냅링의 고리를 끼워 층을 쌓아올리는 모듈 구조의 선반.",
+    workSubtitleEn: "A modular shelf that stacks layers by connecting snap ring loops.",
     name: "Snap ring",
     type: "Shelf / Display",
     dimensions: "440 × 600 × 60 mm",
@@ -246,6 +304,9 @@ export const CAPTION_CONTENT: Record<string, CaptionContent> = {
     ],
   },
   "work-15": {
+    workTitle: "Doorpin, 2025",
+    workSubtitleKo: "교차하는 파이프 구조 속 책등을 통해 원고를 가장 먼저 보여주는 테이블.",
+    workSubtitleEn: "A table that first reveals the manuscript through the book spine within an intersecting pipe structure.",
     name: "doorpin",
     type: "table",
     dimensions: "850 × 850 × 1100 mm",
@@ -262,6 +323,9 @@ export const CAPTION_CONTENT: Record<string, CaptionContent> = {
     ],
   },
   "work-16": {
+    workTitle: "Clamp, 2024",
+    workSubtitleKo: "지류를 임시 제본하여 수납하고, 수납공간의 각도를 조절할 수 있는 아카이빙 책상.",
+    workSubtitleEn: "An archiving desk that temporarily binds and stores paper, with adjustable storage angles.",
     name: "clamp",
     type: "table",
     dimensions: "985 × 1425 × 800 mm",
@@ -276,6 +340,9 @@ export const CAPTION_CONTENT: Record<string, CaptionContent> = {
     ],
   },
   "work-17": {
+    workTitle: "Pulley, 2021",
+    workSubtitleKo: "자작시 <하나인 동시에 모두를>를 가구의 형태로 전환한 사이드 테이블.",
+    workSubtitleEn: "A side table that translates the self-written poem One and All at Once into furniture form.",
     name: "pulley",
     type: "side table",
     dimensions: "400 × 400 × 750 mm",
