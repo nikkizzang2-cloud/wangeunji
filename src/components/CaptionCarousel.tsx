@@ -11,8 +11,9 @@ import { px } from "@/lib/figma-layout";
 // Figma "caption" pages — 5 reference frames across 5 responsive stages
 // (get_design_context/get_metadata nodeId 72:1167 "caption" / 126:464 /
 // 162:65 / 154:47 for the three DesktopCaption width stages (1885/1512/1200
-// native px), 168:111 "caption 1200" for MidCaption (800-1200px), 168:72
-// "cation 800" for MobileCaption (<800px); 168:56/168:57 "caption.textframe"
+// native px), 168:111 "caption 1200" for MidCaption (700-1200px, the frame's
+// own 800px lower edge moved down to match the site's 700px mobile toggle),
+// 168:72 "cation 800" for MobileCaption (<700px); 168:56/168:57 "caption.textframe"
 // give the text-frame-internal font/leading/gap values InfoAndCaption and
 // TitleBlock use everywhere below 1200px doesn't scale). Each stage has its
 // own shrink rules, which a single uniform 2D transform can't express — same
@@ -57,12 +58,8 @@ const CAROUSEL_STAGE3_FLOOR = { w: 512, h: 681 };
 // not still shrinking at 1200).
 const TITLE_LEFT_NATIVE = 20;
 const TITLE_LEFT_FLOOR = 12;
-const TITLE_BOTTOM_GAP_NATIVE = 30; // title box bottom -> its own carousel's bottom edge
-const TITLE_BOTTOM_GAP_FLOOR = 4;
 const CAPTION_RIGHT_MARGIN_NATIVE = 85; // explicit user number (Figma's own right-side box measures ~74, close but not exact)
 const CAPTION_RIGHT_MARGIN_FLOOR = 50;
-const CAPTION_BOTTOM_GAP_NATIVE = 55; // caption text block bottom -> its own carousel's bottom edge
-const CAPTION_BOTTOM_GAP_FLOOR = 12;
 
 const TITLE_WIDTH = 151; // "작업제목" box width, constant across every stage
 const INFO_LABEL_WIDTH = 91;
@@ -115,12 +112,6 @@ const carouselHeightCss = twoStageShrink(
   STAGE3_END_VW,
 );
 const titleLeftMarginCss = linearClamp(TITLE_LEFT_FLOOR, TITLE_LEFT_NATIVE, STAGE2_END_VW, STAGE1_MIN_VW);
-const titleBottomGapCss = linearClamp(
-  TITLE_BOTTOM_GAP_FLOOR,
-  TITLE_BOTTOM_GAP_NATIVE,
-  STAGE2_END_VW,
-  STAGE1_MIN_VW,
-);
 // Below 750px viewport HEIGHT (see DesktopCaption), the viewport-pinned text
 // falls back to these — carousel-box-relative, cropping accepted.
 const captionRightMarginCss = linearClamp(
@@ -129,12 +120,16 @@ const captionRightMarginCss = linearClamp(
   STAGE2_END_VW,
   STAGE1_MIN_VW,
 );
-const captionBottomGapCss = linearClamp(
-  CAPTION_BOTTOM_GAP_FLOOR,
-  CAPTION_BOTTOM_GAP_NATIVE,
-  STAGE2_END_VW,
-  STAGE1_MIN_VW,
-);
+// Below-750px-height fallback bottom-gap-from-carousel-edge, shared by both
+// the title box and the info/caption box — they used to be two separate,
+// mismatched pairs (30/4 for the title, 55/12 for the caption), which made
+// the two boxes' bottoms visibly diverge once the >=750px viewport-pinned
+// position (both pinned to the same bottom:35) gave way to this
+// carousel-relative fallback. Confirmed against work-01, then applied to
+// every work.
+const BOTTOM_GAP_NATIVE = 70;
+const BOTTOM_GAP_FLOOR = 20;
+const bottomGapCss = linearClamp(BOTTOM_GAP_FLOOR, BOTTOM_GAP_NATIVE, STAGE2_END_VW, STAGE1_MIN_VW);
 
 const pretendard = localFont({
   src: "../../node_modules/pretendard/dist/web/static/woff2/Pretendard-Regular.woff2",
@@ -330,7 +325,14 @@ function CarouselButton({ side, work, onAdvance, isTextSlide, item }: CarouselBu
       type="button"
       onClick={onAdvance}
       aria-label={side === "left" ? "Previous left image" : "Next right image"}
-      className="absolute cursor-pointer overflow-hidden bg-[#f8f8f8]"
+      // touch-manipulation: this button sits inside an overflow-y-auto
+      // scrolling page — without it, mobile browsers can wait to see
+      // whether a tap turns into a scroll/double-tap-zoom gesture before
+      // committing to a click, and any real-finger wobble during the tap
+      // gets read as a scroll attempt, silently swallowing the tap
+      // ("캐러셀 터치안됨 사진안넘어감"). Applied to every advance button in
+      // this file for the same reason.
+      className="absolute cursor-pointer touch-manipulation overflow-hidden bg-[#f8f8f8]"
       style={{
         [side]: 0,
         top: px(CAROUSEL_TOP_OFFSET),
@@ -349,7 +351,11 @@ function CarouselButton({ side, work, onAdvance, isTextSlide, item }: CarouselBu
       {isTextSlide && (
         <div
           className="absolute flex flex-col [@media(min-height:750px)]:hidden"
-          style={{ right: captionRightMarginCss, bottom: captionBottomGapCss, width: px(INFO_WIDTH) }}
+          style={{
+            right: captionRightMarginCss,
+            bottom: bottomGapCss,
+            width: px(INFO_WIDTH),
+          }}
         >
           <InfoAndCaption work={work} />
         </div>
@@ -424,8 +430,14 @@ function DesktopCaption({ work }: CaptionCarouselProps) {
           type="button"
           onClick={advanceRight}
           aria-label="Next right image"
-          className="fixed hidden cursor-pointer flex-col [@media(min-height:750px)]:flex"
-          style={{ bottom: px(35), right: px(48), width: px(INFO_WIDTH) }}
+          className="fixed hidden cursor-pointer touch-manipulation flex-col [@media(min-height:750px)]:flex"
+          // will-change: forces its own compositor layer — reported to fix a
+          // Chrome-only bug (works fine in Safari) where this `position:
+          // fixed` box scrolled along with the carousel's photos instead of
+          // staying pinned to the real viewport, even though no ancestor
+          // sets transform/filter/perspective/contain (the usual causes of
+          // a fixed element picking up the wrong containing block).
+          style={{ bottom: px(35), right: px(48), width: px(INFO_WIDTH), willChange: "transform" }}
         >
           <InfoAndCaption work={work} />
         </button>
@@ -438,7 +450,7 @@ function DesktopCaption({ work }: CaptionCarouselProps) {
           the full carousel height/width-gap for the empty space, and the
           title itself is ALSO its own button, kept at its exact original
           position/size (left-aligned, fixed box — see TitleBlock/
-          titleBottomGapCss) — wrapping it in a flex container to "advance
+          bottomGapCss) — wrapping it in a flex container to "advance
           both" broke that (turned it into a full-width flex item, which
           read as center-aligned instead of the fixed-size, left-aligned box
           it should stay). Both buttons call the identical handler, so which
@@ -450,7 +462,7 @@ function DesktopCaption({ work }: CaptionCarouselProps) {
           advanceRight();
         }}
         aria-label="Next image (both)"
-        className="fixed hidden cursor-pointer [@media(min-height:750px)]:block"
+        className="fixed hidden cursor-pointer touch-manipulation [@media(min-height:750px)]:block"
         style={{
           left: "var(--cap-w)",
           right: "var(--cap-w)",
@@ -468,8 +480,14 @@ function DesktopCaption({ work }: CaptionCarouselProps) {
           advanceRight();
         }}
         aria-label="Next image (both)"
-        className="fixed hidden cursor-pointer flex-col text-left text-[10px] leading-[1.5] capitalize [@media(min-height:750px)]:flex"
-        style={{ left: `calc(var(--cap-w) + ${titleLeftMarginCss})`, bottom: px(35) }}
+        className="fixed hidden cursor-pointer touch-manipulation flex-col text-left text-[10px] leading-[1.5] capitalize [@media(min-height:750px)]:flex"
+        // will-change: same Chrome-only "scrolls with the photos instead of
+        // staying pinned" fix as the info/caption box above.
+        style={{
+          left: `calc(var(--cap-w) + ${titleLeftMarginCss})`,
+          bottom: px(35),
+          willChange: "transform",
+        }}
       >
         <TitleBlock work={work} />
       </button>
@@ -481,7 +499,7 @@ function DesktopCaption({ work }: CaptionCarouselProps) {
           advanceRight();
         }}
         aria-label="Next image (both)"
-        className="absolute cursor-pointer [@media(min-height:750px)]:hidden"
+        className="absolute cursor-pointer touch-manipulation [@media(min-height:750px)]:hidden"
         style={{
           left: "var(--cap-w)",
           right: "var(--cap-w)",
@@ -491,8 +509,8 @@ function DesktopCaption({ work }: CaptionCarouselProps) {
       />
       {/* Below 750px viewport height: bottom-anchored to the LEFT carousel's
           own bottom edge (grows upward as content lengthens, per spec —
-          never drops below the carousel) — see titleBottomGapCss's comment
-          on DesktopCaption's earlier revision for why. */}
+          never drops below the carousel), at the same bottomGapCss as the
+          info/caption box above so the two stay flush with each other. */}
       <button
         type="button"
         onClick={() => {
@@ -500,7 +518,7 @@ function DesktopCaption({ work }: CaptionCarouselProps) {
           advanceRight();
         }}
         aria-label="Next image (both)"
-        className="absolute cursor-pointer [@media(min-height:750px)]:hidden"
+        className="absolute cursor-pointer touch-manipulation [@media(min-height:750px)]:hidden"
         style={{
           left: `calc(var(--cap-w) + ${titleLeftMarginCss})`,
           top: px(CAROUSEL_TOP_OFFSET),
@@ -509,7 +527,7 @@ function DesktopCaption({ work }: CaptionCarouselProps) {
       >
         <div
           className="absolute flex flex-col text-left text-[10px] leading-[1.5] capitalize"
-          style={{ left: 0, bottom: titleBottomGapCss }}
+          style={{ left: 0, bottom: bottomGapCss }}
         >
           <TitleBlock work={work} />
         </div>
@@ -547,7 +565,9 @@ type CompactStageProps = {
   advance: () => void;
 };
 
-// --- 800px < 폭 <= 1200px ("caption 1200", node 168:111) ---
+// --- 700px < 폭 <= 1200px ("caption 1200", node 168:111 — designed against
+// an 800px lower edge, moved down to 700px like the rest of the site's
+// mobile toggle, see TopBar.tsx) ---
 const MID_CAROUSEL = { x: 0, y: 67, w: 600, h: 799 };
 const MID_TITLE_X = 35;
 const MID_CAROUSEL_TO_TITLE_GAP = 24; // image bottom(67+799) -> title top(890)
@@ -569,13 +589,13 @@ function MidCaption({ work, orderedMedia, index, advance }: CompactStageProps) {
     : ["TBD"];
 
   return (
-    <div className="hidden min-[800px]:block">
+    <div className="hidden min-[700px]:block">
       <div className="relative pb-16">
         <button
           type="button"
           onClick={advance}
           aria-label="Next image"
-          className="relative block cursor-pointer overflow-hidden bg-[#f8f8f8]"
+          className="relative block cursor-pointer touch-manipulation overflow-hidden bg-[#f8f8f8]"
           style={{
             marginLeft: px(MID_CAROUSEL.x),
             marginTop: px(MID_CAROUSEL.y),
@@ -667,7 +687,9 @@ function MidCaption({ work, orderedMedia, index, advance }: CompactStageProps) {
   );
 }
 
-// --- 폭 < 800px ("cation 800", node 168:72) ---
+// --- 폭 < 700px ("cation 800", node 168:72 — designed against an 800px
+// upper edge, moved down to 700px like the rest of the site's mobile
+// toggle, see TopBar.tsx) ---
 // The image's 615px width is a cap, not a fixed size: at viewport widths
 // >=615px it renders at exactly 615 (matching the design), and below 615px
 // it shrinks fluidly with the viewport (aspect-ratio preserved) — per
@@ -701,13 +723,13 @@ function MobileCaption({ work, orderedMedia, index, advance }: CompactStageProps
     : ["TBD"];
 
   return (
-    <div className="block min-[800px]:hidden">
+    <div className="block min-[700px]:hidden">
       <div className="relative pb-16">
         <button
           type="button"
           onClick={advance}
           aria-label="Next image"
-          className="relative block cursor-pointer overflow-hidden bg-[#f8f8f8]"
+          className="relative block cursor-pointer touch-manipulation overflow-hidden bg-[#f8f8f8]"
           style={{
             marginTop: px(MOBILE_CAROUSEL_TOP),
             width: `min(${px(MOBILE_CAROUSEL_MAX_WIDTH)}, 100%)`,
@@ -795,7 +817,7 @@ function MobileCaption({ work, orderedMedia, index, advance }: CompactStageProps
   );
 }
 
-// <1200px: MidCaption (800-1200px) and MobileCaption (<800px) share one
+// <1200px: MidCaption (700-1200px) and MobileCaption (<700px) share one
 // carousel index/advance handler (computed once here) since both render the
 // SAME current slide, just laid out differently.
 function CompactCaption({ work }: CaptionCarouselProps) {

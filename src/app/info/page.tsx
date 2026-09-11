@@ -4,11 +4,12 @@ import type { ReactNode } from "react";
 import { px } from "@/lib/figma-layout";
 
 // Figma "info" frame (get_metadata nodeId 16:2 / 48:105): width=1920,
-// height=1731. Below MOBILE_BREAKPOINT (800px, see TopBar.tsx), a separate
-// "info mobile" frame (nodeId 95:2287, width=800, height=2074) is used
-// instead — not a scaled-down copy of the desktop numbers. Both variants
-// render at all times (`hidden`/`min-[800px]:hidden` toggles which is
-// visible), same approach as intro/page.tsx.
+// height=1731. Below the site-wide mobile toggle width (700px, see
+// TopBar.tsx), a separate "info mobile" frame (nodeId 95:2287,
+// width=800, height=2074 — its own native reference width, unrelated to the
+// 700px toggle) is used instead — not a scaled-down copy of the desktop
+// numbers. Both variants render at all times (`hidden`/`min-[700px]:hidden`
+// toggles which is visible), same approach as intro/page.tsx.
 //
 // Every element keeps its raw Figma x/y/width, and the whole frame is
 // scaled uniformly by the same min(1, viewport/referenceWidth) factor as
@@ -57,8 +58,8 @@ const MOBILE_CANVAS_HEIGHT = 2074;
 // (~1220.7px), restructure into a stacked column (image restored to native
 // size, on top; the label+content row below it at the original 176.38px
 // gap and a 95px vertical gap; the whole block at a 35px left margin) until
-// the existing 800px mobile breakpoint takes over with its own separate
-// Figma frame ("info mobile", 95:2287) — unchanged, see MobileInfo below.
+// the mobile toggle width (700px) takes over with its own separate Figma
+// frame ("info mobile", 95:2287) — unchanged, see MobileInfo below.
 const INTRO_VIEWPORT_NATIVE = 1512;
 const INTRO_IMAGE_NATIVE_W = 592.9234619140625;
 const INTRO_IMAGE_NATIVE_H = 407.8809509277344;
@@ -73,42 +74,35 @@ const INTRO_ENGLISH_PARA_W = 416;
 const INTRO_KOREAN_PARA_W = 383;
 const INTRO_EXHIBITION_W = 472.448974609375; // the widest content block — governs the row's own right edge
 const INTRO_CONTACT_W = 158;
-// Label column -> content column gap. Figma's own positions (label column
-// at x=686.627, width=53.544; content column starting at x=778) put this at
-// a small, effectively constant ~38px regardless of viewport — there's no
-// separate "wide" native state to shrink from. An earlier revision assumed
-// a 176.38px native gap that doesn't match this frame's actual geometry (or
-// the previous design iteration's, which has the identical ~38px gap) and
-// rendered far too wide at full viewport width — this is the
-// "introduction/exhibition/contact 사이의 갭" the user flagged as wrong.
-const INTRO_LABEL_CONTENT_GAP = 37.82883071899414; // 778 - (686.626953125 + 53.54421615600586)
+const INTRO_LABEL_CONTENT_GAP_NATIVE = 176.38156509399414; // label column -> content column
+const INTRO_LABEL_CONTENT_GAP_FLOOR = 38;
 const INTRO_RIGHT_MARGIN_FLOOR = 40; // viewport right edge -> content column's right edge
 
-// The label-content gap no longer has its own shrink phase (see
-// INTRO_LABEL_CONTENT_GAP above — it's already effectively at its floor
-// natively), so Phase B (image width, image<->label gap, and the row's own
-// right margin) starts right at the native viewport width with no dead zone
-// before it:
-//   image width (592.92->440), image<->label gap (93.70->53), and the row's
-//   own right margin (viewport - row's right edge, ~123->40) all move
-//   TOGETHER, in lockstep, across the SAME viewport range — not
-//   sequentially. An earlier revision did these three one after another
-//   (each fully bottoming out before the next started), which read as
-//   distinctly staggered/jerky while resizing ("덜그럭거리는 느낌") — three
-//   separate "now THIS moves" handoffs. Moving them on one shared linear
-//   progress fraction removes two of those three handoffs; the algebra
-//   guarantees the right margin comes out correctly interpolated with NO
-//   clamp() of its own, since (viewport - rowWidth) is linear whenever
-//   viewport and rowWidth both are: right margin's own start (123, at
-//   PHASE_B_START) and end (40, at PHASE_B_END) values are exactly what
-//   they'd be regardless of path, so this doesn't change PHASE_B_END.
-const INTRO_PHASE_B_START = INTRO_VIEWPORT_NATIVE; // 1512
+// Two shrink phases:
+//   A. label<->content gap: 176.38 -> 38, alone (native width down to
+//      PHASE_B_START) — this one stays sequential/first, per the user's own
+//      "텍스트박스끼리 38px 줄고나서" ("after the text boxes finish").
+//   B. image width (592.92->440), image<->label gap (93.70->53), and the
+//      row's own right margin (viewport - row's right edge, ~123->40) all
+//      move TOGETHER, in lockstep, across the SAME viewport range — not
+//      sequentially. An earlier revision did these three one after another
+//      (each fully bottoming out before the next started), which read as
+//      distinctly staggered/jerky while resizing ("덜그럭거리는 느낌") — three
+//      separate "now THIS moves" handoffs. Moving them on one shared linear
+//      progress fraction removes two of those three handoffs; the algebra
+//      guarantees the right margin comes out correctly interpolated with NO
+//      clamp() of its own, since (viewport - rowWidth) is linear whenever
+//      viewport and rowWidth both are: right margin's own start (123, at
+//      PHASE_B_START) and end (40, at PHASE_B_END) values are exactly what
+//      they'd be regardless of path, so this doesn't change PHASE_B_END.
+const INTRO_PHASE_B_START =
+  INTRO_VIEWPORT_NATIVE - (INTRO_LABEL_CONTENT_GAP_NATIVE - INTRO_LABEL_CONTENT_GAP_FLOOR); // 1373.62
 const INTRO_ROW_WIDTH_AT_FLOORS =
   INTRO_IMAGE_FLOOR_W +
   INTRO_IMAGE_LABEL_GAP_FLOOR +
   INTRO_LABEL_COL_W +
-  INTRO_LABEL_CONTENT_GAP +
-  INTRO_EXHIBITION_W; // ~1056.83
+  INTRO_LABEL_CONTENT_GAP_FLOOR +
+  INTRO_EXHIBITION_W; // 1056.99
 // Where the row layout's right margin would hit its own 40px floor — below
 // this, switch to the stacked layout (min-[1097px]/max-[1097px] below —
 // paired on the SAME value since Tailwind compiles `max-[Npx]` to
@@ -122,7 +116,14 @@ const INTRO_PHASE_B_RANGE = INTRO_PHASE_B_START - INTRO_PHASE_B_END; // 276.62 �
 const INTRO_STACK_GAP = 95; // image bottom -> label/content row, stacked layout only
 const INTRO_STACK_MARGIN = 0; // left margin of the image, stacked layout only
 const INTRO_STACK_TEXT_MARGIN = 40; // left margin of the label/content row, stacked layout only — NOT the same as the image's (reuses the row layout's own right-margin floor value, coincidentally)
-const INTRO_LOGO_GAP = 206; // content column bottom -> logo, both layouts — flow-positioned (not absolute px) so it never overlaps whichever layout is taller
+// content column bottom -> logo, both layouts — flow-positioned (not
+// absolute px) so it never overlaps whichever layout is taller. Desktop
+// only (explicit request): shifted up 40px from the original 206 — logo
+// moves up, INTRO_BOTTOM_PADDING (page bottom -> copyright) stays the same
+// 25px it always was, so the page's total scroll length shrinks by the same
+// 40px. Mobile is unaffected (MobileInfo positions its own footer via
+// absolute px, not this constant).
+const INTRO_LOGO_GAP = 166;
 const INTRO_BOTTOM_PADDING = 25; // page bottom -> copyright text, matches PartsGallery/FurnitureGallery's footer
 
 // Footer group ("Group 264" equivalent) — same logo/copyright size and
@@ -144,6 +145,7 @@ const INTRO_FOOTER_GROUP_WIDTH = 54;
 // text's real visual bottom (caught via browser preview).
 const INTRO_FOOTER_GROUP_HEIGHT = 74.609375;
 
+const introGapCss = `clamp(${px(INTRO_LABEL_CONTENT_GAP_FLOOR)}, calc(${px(INTRO_LABEL_CONTENT_GAP_NATIVE)} - (${px(INTRO_VIEWPORT_NATIVE)} - 100vw)), ${px(INTRO_LABEL_CONTENT_GAP_NATIVE)})`;
 // Phase B: image width and image<->label gap both move on the SAME linear
 // progress fraction (PHASE_B_START - 100vw) / PHASE_B_RANGE — see the
 // constants block above for why this makes the row's right margin come out
@@ -327,13 +329,12 @@ function IntroColumns({ gap }: { gap: string }) {
   );
 }
 
-// Phase B (viewport >= 1097px): image beside the label/content pair. Pure
-// CSS `clamp()` covers it continuously — each of
-// introImageWidthCss/introImageLabelGapCss stays clamped to its own native
-// max above INTRO_PHASE_B_START, so nothing extra is needed here to tell
-// widths apart; the row's right margin shrinking to 40 needs no clamp() of
-// its own at all — see INTRO_PHASE_B_END's comment. The label-content gap
-// itself is now a flat constant (INTRO_LABEL_CONTENT_GAP) — no clamp.
+// Phases A+B (viewport >= 1097px): image beside the label/content pair.
+// Pure CSS `clamp()` covers both phases continuously — each of
+// introImageWidthCss/introImageLabelGapCss/introGapCss stays clamped to its
+// own native max above its own phase's start width, so nothing extra is
+// needed here to tell the phases apart; the row's right margin shrinking to
+// 40 needs no clamp() of its own at all — see INTRO_PHASE_B_END's comment.
 function IntroRowLayout() {
   return (
     <div className="hidden min-[1097px]:flex min-[1097px]:items-start" style={{ marginTop: px(211) }}>
@@ -348,13 +349,13 @@ function IntroRowLayout() {
       </div>
       <div style={{ width: introImageLabelGapCss, flexShrink: 0 }} />
       <div style={{ marginTop: px(13) }}>
-        <IntroColumns gap={px(INTRO_LABEL_CONTENT_GAP)} />
+        <IntroColumns gap={introGapCss} />
       </div>
     </div>
   );
 }
 
-// Stage 5 (viewport 800px-1096px): image restored to native size, on top,
+// Stage 5 (viewport 700px-1096px): image restored to native size, on top,
 // flush left (marginLeft 0 — an explicit correction: an earlier revision
 // used 35px here); label/content pair below it, back at their original
 // (uncompressed) gap and its own separate 40px left margin (not the same
@@ -373,7 +374,7 @@ function IntroStackedLayout() {
         <Image src="/info/cv.png" alt="" fill className="object-cover" priority />
       </div>
       <div style={{ marginTop: px(INTRO_STACK_GAP), marginLeft: px(INTRO_STACK_TEXT_MARGIN) }}>
-        <IntroColumns gap={px(INTRO_LABEL_CONTENT_GAP)} />
+        <IntroColumns gap={px(INTRO_LABEL_CONTENT_GAP_NATIVE)} />
       </div>
     </div>
   );
@@ -381,7 +382,7 @@ function IntroStackedLayout() {
 
 function DesktopInfo() {
   return (
-    <div className="hidden h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] min-[800px]:block">
+    <div className="hidden h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] min-[700px]:block">
       <div className="relative" style={{ paddingBottom: px(INTRO_BOTTOM_PADDING) }}>
         <IntroRowLayout />
         <IntroStackedLayout />
@@ -423,7 +424,7 @@ const MOBILE_SECTION_LABEL_CLASS = "absolute text-[13px] font-normal capitalize 
 
 function MobileInfo() {
   return (
-    <div className="h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] min-[800px]:hidden">
+    <div className="h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] min-[700px]:hidden">
       <div
         className="figma-canvas-frame"
         style={{
@@ -475,7 +476,7 @@ function MobileInfo() {
 
             <div
               className={`${pretendard.className} absolute text-[13px] leading-[1.8]`}
-              style={{ left: px(45), top: px(996), width: px(546), height: px(223) }}
+              style={{ left: px(45), top: px(1006), width: px(546), height: px(223) }}
             >
               <p>
                 가구는 인간의 생활을 보조하는 도구라는 점에서 명확한 목적성을 담보하고 있으면서도,
@@ -490,8 +491,7 @@ function MobileInfo() {
                 이는 가구를 만드는 이와 쓰는 이가 공동의 결정 권한을 가진 채, 일상에서 쓰임을 통해
                 <br />
                 가구의 존재가 증명되는 가설 가구 (Hypothesis Furniture) 의 개념으로 이어진다.
-              </p>
-              <p className="mt-3">
+                <br />
                 이때 가설 가구는 단순한 조형의 전환이 아니라 단일한 쓰임을 유예하고 다양한
                 <br />
                 가능성을 열어두는 구조적 장치를 필요로 하는데, 나는 그것을 &lsquo;파츠&rsquo;로 상정하였다.

@@ -6,6 +6,7 @@ import { EB_Garamond } from "next/font/google";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { furnitureGallery, type GalleryItem } from "@/data/works";
 import { px } from "@/lib/figma-layout";
+import { useHasHover } from "@/lib/useHasHover";
 import MainSideNav from "./MainSideNav";
 
 // Same hover text layer as PartsGallery.tsx, minus the numbering line (no
@@ -158,6 +159,30 @@ type DesktopFurnitureGalleryProps = {
 
 function DesktopFurnitureGallery({ scrollRef, f15Ref }: DesktopFurnitureGalleryProps) {
   const [hoveredId, setHoveredId] = useState<number | null>(null);
+  // See PartsGallery.tsx's DesktopPartsGallery for the same comment/pattern
+  // — a touch-only device (a tablet in landscape, mainly) viewing this
+  // desktop-width layout falls back to tap-once-reveal/tap-twice-navigate.
+  // The two handler sets below are mutually exclusive, never both attached
+  // — see that component's tileHandlers comment for why (a touch device
+  // fires a synthetic mouseenter right before click, which would defeat
+  // the tap-once-reveal pattern if a real onMouseEnter were also present).
+  const hasHover = useHasHover();
+
+  const tileHandlers = (id: number) =>
+    hasHover
+      ? {
+          onMouseEnter: () => setHoveredId(id),
+          onMouseLeave: () =>
+            setHoveredId((current: number | null) => (current === id ? null : current)),
+        }
+      : {
+          onClick: (event: React.MouseEvent) => {
+            if (hoveredId !== id) {
+              event.preventDefault();
+              setHoveredId(id);
+            }
+          },
+        };
 
   return (
     // max-h-screen, not h-screen — same fix as PartsGallery.tsx's identical
@@ -166,7 +191,7 @@ function DesktopFurnitureGallery({ scrollRef, f15Ref }: DesktopFurnitureGalleryP
     // below the footer as the grid shrinks.
     <div
       ref={scrollRef}
-      className="figma-collision-scale hidden max-h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] min-[800px]:block"
+      className="figma-collision-scale hidden max-h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] min-[700px]:block"
       style={{
         ["--fcol-reserved" as string]: px(GRID_RESERVED_WIDTH),
         ["--fcol-width" as string]: px(SCALE_REFERENCE_WIDTH),
@@ -195,15 +220,21 @@ function DesktopFurnitureGallery({ scrollRef, f15Ref }: DesktopFurnitureGalleryP
 
         {/* Grid: anchor (left margin + literal top) never shrinks; only the
             inner content (tiles + year labels, one Figma group) scales,
-            uniformly, once it would collide with the nav menu. */}
+            uniformly, once it would collide with the nav menu.
+
+            `zoom`, not `transform: scale()` — see PartsGallery.tsx's
+            identical comment: transform only changes paint size, not layout
+            size, so the outer overflow-y-auto div kept scrolling as if the
+            grid were still at its full unscaled height, leaving a growing
+            gap between the (correctly-positioned) footer and the page's
+            real bottom once the grid actually shrank below scale 1. */}
         <div className="absolute" style={{ left: px(LEFT_MARGIN), top: px(GRID_ANCHOR_TOP) }}>
           <div
             className="relative"
             style={{
               width: px(GRID_NATIVE_WIDTH),
               height: px(GRID_NATIVE_HEIGHT),
-              transform: "scale(var(--fcol-scale))",
-              transformOrigin: "top left",
+              zoom: "var(--fcol-scale)",
             }}
           >
             {furnitureGallery.map((item, index) => {
@@ -219,12 +250,9 @@ function DesktopFurnitureGallery({ scrollRef, f15Ref }: DesktopFurnitureGalleryP
                   // SCALE_REFERENCE_WIDTH's comment and the effect below).
                   ref={index === 14 ? f15Ref : undefined}
                   href={`/caption/${item.slug}`}
-                  className="absolute overflow-hidden bg-neutral-200"
+                  className="absolute touch-manipulation overflow-hidden bg-neutral-200"
                   style={{ left: px(x), top: px(y), width: px(w), height: px(h) }}
-                  onMouseEnter={() => setHoveredId(item.id)}
-                  onMouseLeave={() =>
-                    setHoveredId((current) => (current === item.id ? null : current))
-                  }
+                  {...tileHandlers(item.id)}
                 >
                   {/* Base image + stacked, opacity-faded hover image — see
                       PartsGallery.tsx's identical comment for why (no
@@ -370,18 +398,32 @@ function MobileFurnitureGallery() {
   // the already-active tile lets the click through to actually navigate to
   // the caption page — same single-value "active" model as desktop's
   // hoveredId, see PartsGallery.tsx's MobilePartsGallery for the same
-  // pattern.
+  // pattern (including the real-mouse fallback to pure hover).
   const [activeId, setActiveId] = useState<number | null>(null);
+  const hasHover = useHasHover();
 
-  const handleTap = (event: React.MouseEvent, id: number) => {
-    if (activeId !== id) {
-      event.preventDefault();
-      setActiveId(id);
-    }
-  };
+  // See PartsGallery.tsx's MobilePartsGallery tileHandlers comment: the two
+  // sets are mutually exclusive, never both attached, since a touch device
+  // fires a synthetic mouseenter right before click regardless of whether a
+  // real cursor exists.
+  const tileHandlers = (id: number) =>
+    hasHover
+      ? {
+          onMouseEnter: () => setActiveId(id),
+          onMouseLeave: () =>
+            setActiveId((current: number | null) => (current === id ? null : current)),
+        }
+      : {
+          onClick: (event: React.MouseEvent) => {
+            if (activeId !== id) {
+              event.preventDefault();
+              setActiveId(id);
+            }
+          },
+        };
 
   return (
-    <div className="h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] min-[800px]:hidden">
+    <div className="h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] min-[700px]:hidden">
       <div
         className="figma-canvas-frame"
         style={{
@@ -407,14 +449,14 @@ function MobileFurnitureGallery() {
                 <Link
                   key={item.id}
                   href={`/caption/${item.slug}`}
-                  className="absolute overflow-hidden bg-neutral-200"
+                  className="absolute touch-manipulation overflow-hidden bg-neutral-200"
                   style={{
                     left: px(MOBILE_TILE_X),
                     top: px(y - MOBILE_Y_SHIFT),
                     width: px(w),
                     height: px(h),
                   }}
-                  onClick={(event) => handleTap(event, item.id)}
+                  {...tileHandlers(item.id)}
                 >
                   {item.image && (
                     <Image src={item.image} alt={item.title} fill className="object-cover" />

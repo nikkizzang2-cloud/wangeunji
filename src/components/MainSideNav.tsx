@@ -27,11 +27,13 @@ const DESKTOP_NAV_ITEMS = [
   { label: "parts", href: "/main/parts", y: 215 },
 ] as const;
 
-// Below MOBILE_BREAKPOINT (800px, see TopBar.tsx), the mobile Figma frames
-// ("main.parts mobile" 95:2244, "parts.funiture mobile" 95:2340) place this
-// nav at x=682 (right edge at 760, i.e. 40px from the 800px frame's own
-// right edge) instead of desktop's x=1764 — not a scaled-down copy of the
-// desktop numbers.
+// Below the site-wide mobile toggle width (700px, see TopBar.tsx), the
+// mobile Figma frames ("main.parts mobile"
+// 95:2244, "parts.funiture mobile" 95:2340, both authored at native width
+// 800 regardless of where the toggle itself sits) place this nav at x=682
+// (right edge at 760, i.e. 40px from the 800px frame's own right edge)
+// instead of desktop's x=1764 — not a scaled-down copy of the desktop
+// numbers.
 const MOBILE_NAV_ITEMS = [
   { label: "furniture", href: "/main/furniture", y: 301 },
   { label: "parts", href: "/main/parts", y: 319 },
@@ -82,7 +84,7 @@ export default function MainSideNav({
   if (fixed) {
     return (
       <div className="pointer-events-none fixed inset-x-0 top-0 z-30">
-        <div className="relative hidden h-full min-[800px]:block">
+        <div className="relative hidden h-full min-[700px]:block">
           {DESKTOP_NAV_ITEMS.map((item) => (
             <Link
               key={item.href}
@@ -107,7 +109,7 @@ export default function MainSideNav({
         </div>
 
         <div
-          className="figma-fixed-scale h-full min-[800px]:hidden"
+          className="figma-fixed-scale h-full min-[700px]:hidden"
           style={{ ["--ffs-width" as string]: px(800) }}
         >
           <div className="figma-fixed-scale-inner">

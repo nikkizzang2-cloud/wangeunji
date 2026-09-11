@@ -6,6 +6,7 @@ import { Crimson_Text, EB_Garamond } from "next/font/google";
 import { useState } from "react";
 import { partsGallery, PARTS_RECTANGLE_NUMBERS, type GalleryItem } from "@/data/works";
 import { px } from "@/lib/figma-layout";
+import { useHasHover } from "@/lib/useHasHover";
 import MainSideNav from "./MainSideNav";
 
 // Hover text layer (get_design_context nodeId 54:217) uses three fonts: the
@@ -198,6 +199,41 @@ function HoverInfo({ item }: { item: GalleryItem }) {
 
 function DesktopPartsGallery() {
   const [hoveredId, setHoveredId] = useState<number | null>(null);
+  // See useHasHover's own comment — a touch-only device viewing this
+  // desktop-width layout (a tablet in landscape, mainly) can't hover, so it
+  // falls back to the same tap-once-reveal/tap-twice-navigate pattern
+  // MobilePartsGallery always uses; a real mouse (even in a narrow, resized
+  // desktop window showing the OTHER layout) keeps pure hover there too —
+  // see that component's own tileHandlers.
+  const hasHover = useHasHover();
+
+  // Real mouse: only onMouseEnter/onMouseLeave, no click gating at all —
+  // click always navigates. Touch-only: only onClick's tap-once-reveal/
+  // tap-twice-navigate, NO onMouseEnter/onMouseLeave attached. The two sets
+  // are mutually exclusive, not just gated — attaching onMouseEnter on a
+  // touch device still fires it, because mobile browsers dispatch a
+  // SYNTHETIC mouseenter/mouseover right before the click event (for
+  // legacy hover-site compatibility), regardless of whether the page has a
+  // real cursor. That synthetic event was setting hoveredId to the tapped
+  // tile BEFORE the click handler's own `hoveredId !== id` check ran, so
+  // the check was always already false and every tap fell straight through
+  // to navigation — exactly the "한번 클릭하면 바로 캡션창... 이미지 안뜸" bug
+  // report. Not attaching the handler at all is the only reliable fix.
+  const tileHandlers = (id: number) =>
+    hasHover
+      ? {
+          onMouseEnter: () => setHoveredId(id),
+          onMouseLeave: () =>
+            setHoveredId((current: number | null) => (current === id ? null : current)),
+        }
+      : {
+          onClick: (event: React.MouseEvent) => {
+            if (hoveredId !== id) {
+              event.preventDefault();
+              setHoveredId(id);
+            }
+          },
+        };
 
   return (
     // max-h-screen, not h-screen: was previously an exact 100vh, which left
@@ -211,7 +247,7 @@ function DesktopPartsGallery() {
     // container shrink to fit shorter content, so the page's total scroll
     // length shrinks right along with the grid.
     <div
-      className="figma-collision-scale hidden max-h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] min-[800px]:block"
+      className="figma-collision-scale hidden max-h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] min-[700px]:block"
       style={{
         ["--fcol-reserved" as string]: px(GRID_RESERVED_WIDTH),
         ["--fcol-width" as string]: px(GRID_NATIVE_WIDTH),
@@ -245,15 +281,28 @@ function DesktopPartsGallery() {
 
       {/* Grid: anchor (left margin + literal top) never shrinks; only the
           inner content scales, uniformly, once it would collide with the
-          nav menu (`.figma-collision-scale`, globals.css). */}
+          nav menu (`.figma-collision-scale`, globals.css).
+
+          `zoom`, not `transform: scale()`: transform only changes paint
+          size, not layout size, so a scaled-down `transform` box still
+          reserves its full *unscaled* height for scrollable-overflow
+          purposes — the outer `overflow-y-auto` div's scrollHeight tracked
+          the raw GRID_NATIVE_HEIGHT regardless of scale (confirmed via
+          browser measurement: scrollHeight matched GRID_ANCHOR_TOP +
+          GRID_NATIVE_HEIGHT, not the scaled figure the `minHeight` below
+          intends), so the page still scrolled far past the footer once the
+          grid actually shrank — the "logo margin grows as the grid shrinks"
+          bug survived the earlier max-h-screen fix because of this, not
+          because of it. `zoom` affects layout, not just paint (same reason
+          globals.css's `.figma-zoom-content` uses it instead of transform),
+          so the box's reserved space actually shrinks with it. */}
       <div className="absolute" style={{ left: px(LEFT_MARGIN), top: px(GRID_ANCHOR_TOP) }}>
         <div
           className="relative"
           style={{
             width: px(GRID_NATIVE_WIDTH),
             height: px(GRID_NATIVE_HEIGHT),
-            transform: "scale(var(--fcol-scale))",
-            transformOrigin: "top left",
+            zoom: "var(--fcol-scale)",
           }}
         >
           {partsGallery.map((item, index) => {
@@ -261,14 +310,16 @@ function DesktopPartsGallery() {
             const isHovered = hoveredId === item.id;
             const isInstagram = item.instagramUrl !== null;
 
+            // touch-manipulation: this tile sits inside an overflow-y-auto
+            // scrolling page — without it, mobile browsers can read any
+            // real-finger wobble during a tap as a scroll attempt and
+            // silently swallow the tap instead of firing click. Same fix as
+            // CaptionCarousel.tsx's CarouselButton.
             const content = (
               <div
-                className="absolute overflow-hidden bg-neutral-200"
+                className="absolute touch-manipulation overflow-hidden bg-neutral-200"
                 style={{ left: px(x), top: px(y), width: px(w), height: px(h) }}
-                onMouseEnter={() => setHoveredId(item.id)}
-                onMouseLeave={() =>
-                  setHoveredId((current) => (current === item.id ? null : current))
-                }
+                {...tileHandlers(item.id)}
               >
                 {/* Base image (always rendered) + a stacked hover image
                     faded in via opacity, rather than swapping `src`
@@ -397,18 +448,35 @@ function MobilePartsGallery() {
   // the already-active tile lets the click through to actually navigate
   // (caption page, or Instagram for the 36 uncaptioned tiles) — tapping a
   // different tile just moves the "active" one, same single-value model as
-  // desktop's hoveredId.
+  // desktop's hoveredId. A real mouse (a desktop browser resized narrow
+  // enough to show this layout) skips all of that and just hovers, same as
+  // DesktopPartsGallery — see useHasHover's own comment.
   const [activeId, setActiveId] = useState<number | null>(null);
+  const hasHover = useHasHover();
 
-  const handleTap = (event: React.MouseEvent, id: number) => {
-    if (activeId !== id) {
-      event.preventDefault();
-      setActiveId(id);
-    }
-  };
+  // See DesktopPartsGallery's identical comment: the two handler sets are
+  // mutually exclusive, never both attached — a touch device still fires a
+  // SYNTHETIC mouseenter right before click (for legacy hover-site
+  // compat), which would set activeId before this handler's own check ever
+  // ran, defeating the tap-once-reveal/tap-twice-navigate pattern entirely.
+  const tileHandlers = (id: number) =>
+    hasHover
+      ? {
+          onMouseEnter: () => setActiveId(id),
+          onMouseLeave: () =>
+            setActiveId((current: number | null) => (current === id ? null : current)),
+        }
+      : {
+          onClick: (event: React.MouseEvent) => {
+            if (activeId !== id) {
+              event.preventDefault();
+              setActiveId(id);
+            }
+          },
+        };
 
   return (
-    <div className="h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] min-[800px]:hidden">
+    <div className="h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] min-[700px]:hidden">
       <div
         className="figma-canvas-frame"
         style={{
@@ -432,9 +500,9 @@ function MobilePartsGallery() {
 
               const content = (
                 <div
-                  className="absolute overflow-hidden bg-neutral-200"
+                  className="absolute touch-manipulation overflow-hidden bg-neutral-200"
                   style={{ left: px(x), top: px(y), width: px(w), height: px(h) }}
-                  onClick={(event) => handleTap(event, item.id)}
+                  {...tileHandlers(item.id)}
                 >
                   {/* Base image + stacked, opacity-faded hover image — see
                       the desktop grid's identical comment for why (no

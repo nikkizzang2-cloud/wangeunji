@@ -1,19 +1,27 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { px } from "@/lib/figma-layout";
 
-// Mobile (<800px, MOBILE_BREAKPOINT, see TopBar.tsx) uses a separate "intro
-// mobile" Figma frame (nodeId 95:2088, width=800, height=1532) — not just a
+// TopBar's "home" link routes here as `/intro?unlock=1` instead of straight
+// to /main/parts (see TopBar.tsx's own comment) — this duration drives BOTH
+// the CSS transition on the auto-animated lock (below) and the setTimeout
+// that navigates on afterward, so the page-change lands right as the motion
+// finishes rather than cutting it off or leaving an awkward pause.
+const AUTO_UNLOCK_DURATION_MS = 450;
+
+// Mobile (<700px, the site-wide mobile toggle width — see TopBar.tsx) uses a separate "intro
+// mobile" Figma frame (nodeId 95:2088, width=800, height=1532 — its own
+// native reference width, unrelated to the 700px toggle) — not just a
 // scaled-down copy of desktop's numbers (the lock pieces are relatively
 // bigger on mobile: lock-left is 100x134 there vs 114.53x153.35 on desktop,
 // a ~0.873 ratio, not the 800/1920=0.417 frame-width ratio). It still scales
-// down via `.figma-contain-scale` as its own viewport narrows below 800px —
-// unchanged, unaffected by the desktop change below.
+// down via `.figma-contain-scale` as its own viewport narrows below its own
+// 800px reference — unchanged, unaffected by the desktop change below.
 //
-// Desktop (>=800px) is now FIXED size, never scaling — explicit brief from
+// Desktop (>=700px) is now FIXED size, never scaling — explicit brief from
 // the user: "화면이 줄어들어도 가운데 락의 크기가 바뀌지않고, 그냥 정중앙에
 // 위치하면 돼" (as the screen shrinks, the center lock's size shouldn't
 // change, just stay centered). Numbers below are node 117:243 (the "lock"
@@ -26,7 +34,7 @@ import { px } from "@/lib/figma-layout";
 // small fixed box, centered via plain flexbox (`h-dvh flex items-center
 // justify-center`, no `.figma-contain-scale`/cqw involved at all).
 //
-// Both variants render at all times (`hidden`/`min-[800px]:hidden` toggles
+// Both variants render at all times (`hidden`/`min-[700px]:hidden` toggles
 // which is visible) rather than picking one in JS, so there's no
 // hydration-mismatch flash — same approach as PartsGallery.tsx's canvas vs.
 // TopBar.tsx's two nav blocks.
@@ -83,6 +91,7 @@ function LockComposition({
   canvasHeight,
   geom,
   scale = true,
+  autoUnlock = false,
 }: {
   className: string;
   canvasWidth: number;
@@ -92,12 +101,29 @@ function LockComposition({
   // flexbox — no `.figma-contain-scale` involved. See DESKTOP_LOCK_BOX's
   // comment. Defaults to true (mobile's existing scaling behavior).
   scale?: boolean;
+  // See AUTO_UNLOCK_DURATION_MS's comment — drives the piece straight to its
+  // fully-open position on mount instead of waiting for a drag.
+  autoUnlock?: boolean;
 }) {
   const router = useRouter();
   const dragElRef = useRef<HTMLDivElement | null>(null);
   const dragStateRef = useRef({ scale: 1, lastX: 0, dragged: 0 });
   const [dragX, setDragX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+
+  useEffect(() => {
+    if (!autoUnlock) return;
+    // Deferred a frame (not a synchronous setState in the effect body) so
+    // the initial dragX=0 actually commits/paints first — otherwise the
+    // transform jumps straight to its open position with no transition to
+    // animate, since React would batch both the mount and this update into
+    // the same paint.
+    const raf = requestAnimationFrame(() => {
+      dragStateRef.current.dragged = -geom.dragDistance;
+      setDragX(-geom.dragDistance);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [autoUnlock, geom.dragDistance]);
 
   // Drag is implemented with plain mouse/touch events instead of Pointer
   // Events: Pointer Events turned out unreliable inside KakaoTalk's in-app
@@ -239,7 +265,9 @@ function LockComposition({
           width: px(geom.lockRight2.w),
           height: px(geom.lockRight2.h),
           transform: `translateX(${px(dragX)})`,
-          transition: isDragging ? "none" : "transform 200ms ease",
+          transition: isDragging
+            ? "none"
+            : `transform ${autoUnlock ? AUTO_UNLOCK_DURATION_MS : 200}ms ease`,
         }}
       >
         {/* Figma applies a manual crop/zoom transform to each image
@@ -304,22 +332,51 @@ function LockComposition({
   );
 }
 
-export default function IntroPage() {
+function IntroContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const autoUnlock = searchParams.get("unlock") === "1";
+
+  // Single navigation, owned here rather than inside each LockComposition
+  // instance (desktop/mobile both render at once, `hidden`/`flex` toggling
+  // which is visible — letting each own its own timer would fire router.push
+  // twice) — timed to match AUTO_UNLOCK_DURATION_MS so it lands right as the
+  // drag-open motion finishes.
+  useEffect(() => {
+    if (!autoUnlock) return;
+    const timer = setTimeout(() => router.push("/main/parts"), AUTO_UNLOCK_DURATION_MS);
+    return () => clearTimeout(timer);
+  }, [autoUnlock, router]);
+
   return (
     <>
       <LockComposition
-        className="hidden min-[800px]:flex"
+        className="hidden min-[700px]:flex"
         canvasWidth={DESKTOP_LOCK_BOX.width}
         canvasHeight={DESKTOP_LOCK_BOX.height}
         geom={DESKTOP_GEOM}
         scale={false}
+        autoUnlock={autoUnlock}
       />
       <LockComposition
-        className="flex min-[800px]:hidden"
+        className="flex min-[700px]:hidden"
         canvasWidth={MOBILE_CANVAS.width}
         canvasHeight={MOBILE_CANVAS.height}
         geom={MOBILE_GEOM}
+        autoUnlock={autoUnlock}
       />
     </>
+  );
+}
+
+export default function IntroPage() {
+  // useSearchParams() requires a Suspense boundary — this page has no
+  // server-rendered content to preserve either way (the whole tree is
+  // already "use client"), so the fallback is never visibly shown in
+  // practice.
+  return (
+    <Suspense fallback={null}>
+      <IntroContent />
+    </Suspense>
   );
 }
