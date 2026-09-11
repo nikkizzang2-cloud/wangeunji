@@ -4,7 +4,22 @@
   /* Matches the bg-[#f8f8f8] every page content area uses (PartsGallery,
      FurnitureGallery, /info) — TopBar has no background of its own (see
      TopBar.tsx), so it shows this through. Keeping them the same color
-     avoids a visible white strip behind the transparent header. */
+     avoids a visible white strip behind the transparent header.
+
+     `color-scheme: light` + no `prefers-color-scheme: dark` override:
+     every page here is a fixed, Figma-precise, always-light design with no
+     dark variant — the create-next-app starter template's dark-mode
+     color-swap was still here, unused (nothing reads --foreground except
+     this file's own `body` rule below; every actual text element on the
+     site sets its own explicit Tailwind color). But on a device with
+     system dark mode on, that swap silently flipped `body`'s inherited
+     text color from near-black (#171717) to near-white (#ededed) — a real
+     bug for any text that doesn't set its own color, and reported exactly
+     as "글자색이 다르게 보여" from an outside device. `color-scheme: light`
+     additionally opts out of browsers' own automatic dark-mode repainting
+     (e.g. Android Chrome's "force dark" for pages that don't declare one),
+     which can invert colors more aggressively than just this variable. */
+  color-scheme: light;
   --background: #f8f8f8;
   --foreground: #171717;
 }
@@ -13,13 +28,6 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-helvetica);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {

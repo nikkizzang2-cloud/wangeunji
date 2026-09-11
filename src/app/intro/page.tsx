@@ -12,6 +12,18 @@ import { px } from "@/lib/figma-layout";
 // finishes rather than cutting it off or leaving an awkward pause.
 const AUTO_UNLOCK_DURATION_MS = 450;
 
+// Session cookie (no explicit maxAge, so it's cleared when the browser tab
+// closes) — middleware.ts redirects any direct/shared-link visit to
+// /main/parts, /main/furniture, or /info back to /intro unless this cookie
+// is present, per explicit request: sharing a link to those pages should
+// always show /intro first, only actually unlocking it (here) lets you
+// through. Set right before EITHER success path navigates away — the
+// manual drag (below) and the auto-unlock triggered by clicking "home"
+// while already on /intro (IntroContent's own effect further down).
+function markEntered() {
+  document.cookie = "entered=1; path=/";
+}
+
 // Mobile (<700px, the site-wide mobile toggle width — see TopBar.tsx) uses a separate "intro
 // mobile" Figma frame (nodeId 95:2088, width=800, height=1532 — its own
 // native reference width, unrelated to the 700px toggle) — not just a
@@ -184,6 +196,7 @@ function LockComposition({
       setIsDragging(false);
       const state = dragStateRef.current;
       if (state.dragged <= -(geom.dragDistance - geom.alignThreshold)) {
+        markEntered();
         router.push("/main/parts");
         return;
       }
@@ -344,7 +357,10 @@ function IntroContent() {
   // drag-open motion finishes.
   useEffect(() => {
     if (!autoUnlock) return;
-    const timer = setTimeout(() => router.push("/main/parts"), AUTO_UNLOCK_DURATION_MS);
+    const timer = setTimeout(() => {
+      markEntered();
+      router.push("/main/parts");
+    }, AUTO_UNLOCK_DURATION_MS);
     return () => clearTimeout(timer);
   }, [autoUnlock, router]);
 
