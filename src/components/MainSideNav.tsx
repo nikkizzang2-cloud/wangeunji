@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { createFigmaGeom, px } from "@/lib/figma-layout";
 
 // Figma "/main" frame (get_metadata nodeId 23:1023): width=1920. This
@@ -74,12 +75,60 @@ type MainSideNavProps = {
   whiteOverlap?: boolean;
 };
 
+// Explicit request: every time you land on /main fresh FROM /intro
+// (whichever of parts/furniture the redirect resolves to) — whether by
+// dragging the lock open by hand or via the "home" auto-unlock — NEITHER
+// label should read as "current" yet, both stay black, since the user
+// hasn't actually chosen one over the other for THIS entrance. Once they
+// click either nav item, the black/gray current-vs-inactive split turns on
+// and stays on for the rest of that entrance — until they go back through
+// /intro again, which resets it. sessionStorage (not component state)
+// because MainSideNav remounts fresh on every parts<->furniture navigation
+// (each is its own page/component tree, not a shared persisted layout) —
+// plain useState would reset right back to "nothing selected yet" on the
+// very next click. intro/page.tsx calls resetNavSelection() right where it
+// sets the "entered" cookie (both gate the SAME two success paths: manual
+// drag and auto-unlock), so a fresh entrance always starts clean even if
+// the previous one had already turned the split on.
+const NAV_SELECTED_KEY = "mainNavSelected";
+function markNavSelected() {
+  try {
+    sessionStorage.setItem(NAV_SELECTED_KEY, "1");
+  } catch {
+    // Private-browsing/storage-disabled: worst case the black/gray split
+    // never turns on, which just means it stays "both black" — harmless.
+  }
+}
+function readNavSelected() {
+  try {
+    return sessionStorage.getItem(NAV_SELECTED_KEY) === "1";
+  } catch {
+    return false; // storage inaccessible — safe "both black" default
+  }
+}
+export function resetNavSelection() {
+  try {
+    sessionStorage.removeItem(NAV_SELECTED_KEY);
+  } catch {
+    // Storage inaccessible — nothing to reset either way.
+  }
+}
+
 export default function MainSideNav({
   pinned = false,
   fixed = false,
   whiteOverlap = false,
 }: MainSideNavProps) {
   const pathname = usePathname();
+  // Lazy initializer (runs synchronously on first render, not inside an
+  // effect — see useHasHover.ts's identical comment for why: the
+  // react-hooks/set-state-in-effect rule flags a synchronous setState in an
+  // effect body) reads sessionStorage before first paint, so there's no
+  // flash from "both black" to the split — SSR's own render doesn't depend
+  // on this value (sessionStorage doesn't exist server-side, so it starts
+  // `false` there, but that's also correct: a server-rendered page has by
+  // definition not been "selected" yet).
+  const [hasSelected] = useState(readNavSelected);
 
   if (fixed) {
     return (
@@ -89,12 +138,13 @@ export default function MainSideNav({
             <Link
               key={item.href}
               href={item.href}
+              onClick={markNavSelected}
               className={`pointer-events-auto absolute text-right capitalize ${
                 whiteOverlap
                   ? "text-white"
-                  : pathname === item.href
-                    ? "text-black"
-                    : "text-[#b9b9b9]"
+                  : hasSelected && pathname !== item.href
+                    ? "text-[#b9b9b9]"
+                    : "text-black"
               }`}
               style={{
                 right: px(DESKTOP_NAV_RIGHT_MARGIN),
@@ -117,8 +167,9 @@ export default function MainSideNav({
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={markNavSelected}
                 className={`pointer-events-auto absolute text-right capitalize ${
-                  pathname === item.href ? "text-black" : "text-[#b9b9b9]"
+                  hasSelected && pathname !== item.href ? "text-[#b9b9b9]" : "text-black"
                 }`}
                 style={{
                   left: px(682),

@@ -15,16 +15,16 @@ const helvetica = localFont({
 // opengraph-image.png (this directory) supplies the og:image tag via
 // Next.js's file convention automatically — the link-preview thumbnail is a
 // screenshot of /intro, site-wide (every route inherits this since nothing
-// more specific overrides it), per explicit request. openGraph.title/
-// description are spelled out explicitly rather than left to fall back from
-// the top-level fields above, since Next.js only does that fallback when an
-// `openGraph` object is present to begin with.
+// more specific overrides it), per explicit request. No description
+// anywhere (meta or openGraph) — explicit request to drop the "상업용 가구
+// 작업물 아카이브" line KakaoTalk's link-preview card was showing under the
+// title. openGraph.title is still spelled out explicitly rather than left
+// to fall back from the top-level `title` above, since Next.js only does
+// that fallback when an `openGraph` object is present to begin with.
 export const metadata: Metadata = {
   title: "WANG EUNJI",
-  description: "상업용 가구 작업물 아카이브",
   openGraph: {
     title: "WANG EUNJI",
-    description: "상업용 가구 작업물 아카이브",
   },
 };
 

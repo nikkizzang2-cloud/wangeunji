@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { px } from "@/lib/figma-layout";
+import { resetNavSelection } from "@/components/MainSideNav";
 
 // TopBar's "home" link routes here as `/intro?unlock=1` instead of straight
 // to /main/parts (see TopBar.tsx's own comment) — this duration drives BOTH
@@ -20,8 +21,15 @@ const AUTO_UNLOCK_DURATION_MS = 450;
 // through. Set right before EITHER success path navigates away — the
 // manual drag (below) and the auto-unlock triggered by clicking "home"
 // while already on /intro (IntroContent's own effect further down).
+//
+// Also resets MainSideNav's own "has the user picked parts vs furniture
+// yet" flag — explicit follow-up request: going back through /intro (drag
+// OR the "home" auto-unlock) should make both nav labels black again on
+// arrival, not keep whatever black/gray split an earlier entrance already
+// turned on.
 function markEntered() {
   document.cookie = "entered=1; path=/";
+  resetNavSelection();
 }
 
 // Mobile (<700px, the site-wide mobile toggle width — see TopBar.tsx) uses a separate "intro

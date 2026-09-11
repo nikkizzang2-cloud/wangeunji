@@ -703,14 +703,18 @@ const MOBILE_CAROUSEL_TO_TITLE_GAP = 30; // image bottom(67+820) -> title top(91
 const MOBILE_TITLE_WIDTH = 145;
 const MOBILE_TITLE_SUBTITLE_GAP = 24; // title bottom(917+30) -> subtitle top(971)
 const MOBILE_SUBTITLE_TO_INFO_GAP = 96; // subtitle bottom(971+65) -> info row top(1132)
-const MOBILE_INFO_ROW_FONT_SIZE = 11;
-const MOBILE_PARTS_ROW_GAP = 23; // Parts row bottom(1132+51) -> for row top(1206)
-const MOBILE_FOR_ROW_GAP = 31; // for row bottom(1206+17) -> date row top(1254)
-const MOBILE_DATE_TO_CAPTION_GAP = 46; // date row bottom(1254+17) -> caption group top(1317)
-const MOBILE_CAPTION_FONT_SIZE = 11; // unified with Desktop/Mid (was 12, the "cation 800" frame's own value)
+// Explicit request: unified with Desktop/Mid's own values (INFO_ROW_FONT_SIZE
+// / PARTS_ROW_GAP / FOR_ROW_GAP / DATE_ROW_GAP / CAPTION_KO_EN_GAP above) —
+// the "cation 800" mobile frame's own measurements (11/23/31/46/35) are no
+// longer used here. CAPTION_FONT_SIZE was already unified earlier.
+const MOBILE_INFO_ROW_FONT_SIZE = INFO_ROW_FONT_SIZE;
+const MOBILE_PARTS_ROW_GAP = PARTS_ROW_GAP;
+const MOBILE_FOR_ROW_GAP = FOR_ROW_GAP;
+const MOBILE_DATE_TO_CAPTION_GAP = DATE_ROW_GAP;
+const MOBILE_CAPTION_FONT_SIZE = CAPTION_FONT_SIZE;
 const MOBILE_CAPTION_KO_WIDTH = 305;
 const MOBILE_CAPTION_EN_WIDTH = 325;
-const MOBILE_CAPTION_KO_EN_GAP = 35; // ko bottom(1317+126) -> en top(1478)
+const MOBILE_CAPTION_KO_EN_GAP = CAPTION_KO_EN_GAP;
 
 function MobileCaption({ work, orderedMedia, index, advance }: CompactStageProps) {
   const dimensionUnits = work.partsInfo.dimensions
@@ -766,7 +770,7 @@ function MobileCaption({ work, orderedMedia, index, advance }: CompactStageProps
             fontSize: px(MOBILE_INFO_ROW_FONT_SIZE),
           }}
         >
-          <div className="flex leading-[1.5]" style={{ marginBottom: px(MOBILE_PARTS_ROW_GAP) }}>
+          <div className="flex leading-[1.6]" style={{ marginBottom: px(MOBILE_PARTS_ROW_GAP) }}>
             <div className="shrink-0 whitespace-nowrap" style={{ width: px(INFO_LABEL_WIDTH) }}>
               <p>Parts</p>
               <p>type</p>
