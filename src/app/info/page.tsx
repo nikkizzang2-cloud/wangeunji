@@ -28,16 +28,19 @@ import { px } from "@/lib/figma-layout";
 //
 // Mobile stacks label-above-content (both columns start at the same x=46)
 // instead of desktop's side-by-side label/content columns — a real layout
-// difference in the mobile frame, not just narrower numbers. Every mobile
-// paragraph's manual line breaks below are copied verbatim from
-// get_design_context's mobile-frame output (not re-wrapped/guessed) since
-// they differ from desktop's own break points at the smaller 13px size.
+// difference in the mobile frame, not just narrower numbers. Per explicit
+// request, the Introduction paragraphs' manual line breaks are mirrored
+// verbatim from the desktop node (154:130)'s own break points rather than
+// re-wrapped for the mobile frame's own (smaller, 13px) width — mobile's
+// own paragraph *grouping* (which sentences share a `<p>`, and the gaps
+// between them) is unchanged, only where each line wraps inside a group.
 //
-// The Korean body copy is set in Pretendard Medium in the design, distinct
-// from the Helvetica used everywhere else on the site (both breakpoints).
+// The Korean body copy is set in Pretendard Regular (changed from Medium
+// per explicit request), distinct from the Helvetica used everywhere else
+// on the site (both breakpoints).
 const pretendard = localFont({
-  src: "../../../node_modules/pretendard/dist/web/static/woff2/Pretendard-Medium.woff2",
-  weight: "500",
+  src: "../../../node_modules/pretendard/dist/web/static/woff2/Pretendard-Regular.woff2",
+  weight: "400",
   display: "swap",
 });
 
@@ -62,43 +65,50 @@ const INTRO_IMAGE_NATIVE_H = 407.8809509277344;
 const INTRO_IMAGE_FLOOR_W = 440;
 const INTRO_IMAGE_LABEL_GAP_NATIVE = 93.7034912109375; // image right edge -> label column
 const INTRO_IMAGE_LABEL_GAP_FLOOR = 53;
-const INTRO_LABEL_COL_W = 53.54421615600586; // "introduction", the longest label — node 117:139's own width
-// Content column block widths (node 117:139) — each text block keeps its
+const INTRO_LABEL_COL_W = 53.54421615600586; // "introduction", the longest label — node 154:130's own width
+// Content column block widths (node 154:130) — each text block keeps its
 // own native width/font-size pair so its wrap points (and therefore its
 // rendered height, which the vertical gaps below assume) match Figma.
-const INTRO_ENGLISH_PARA_W = 434;
-const INTRO_KOREAN_PARA_W = 429.9285583496094;
+const INTRO_ENGLISH_PARA_W = 416;
+const INTRO_KOREAN_PARA_W = 383;
 const INTRO_EXHIBITION_W = 472.448974609375; // the widest content block — governs the row's own right edge
 const INTRO_CONTACT_W = 158;
-const INTRO_LABEL_CONTENT_GAP_NATIVE = 176.38156509399414; // label column -> content column
-const INTRO_LABEL_CONTENT_GAP_FLOOR = 38;
+// Label column -> content column gap. Figma's own positions (label column
+// at x=686.627, width=53.544; content column starting at x=778) put this at
+// a small, effectively constant ~38px regardless of viewport — there's no
+// separate "wide" native state to shrink from. An earlier revision assumed
+// a 176.38px native gap that doesn't match this frame's actual geometry (or
+// the previous design iteration's, which has the identical ~38px gap) and
+// rendered far too wide at full viewport width — this is the
+// "introduction/exhibition/contact 사이의 갭" the user flagged as wrong.
+const INTRO_LABEL_CONTENT_GAP = 37.82883071899414; // 778 - (686.626953125 + 53.54421615600586)
 const INTRO_RIGHT_MARGIN_FLOOR = 40; // viewport right edge -> content column's right edge
 
-// Two shrink phases:
-//   A. label<->content gap: 176.38 -> 38, alone (native width down to
-//      PHASE_B_START) — this one stays sequential/first, per the user's own
-//      "텍스트박스끼리 38px 줄고나서" ("after the text boxes finish").
-//   B. image width (592.92->440), image<->label gap (93.70->53), and the
-//      row's own right margin (viewport - row's right edge, ~123->40) all
-//      move TOGETHER, in lockstep, across the SAME viewport range — not
-//      sequentially. An earlier revision did these three one after another
-//      (each fully bottoming out before the next started), which read as
-//      distinctly staggered/jerky while resizing ("덜그럭거리는 느낌") — three
-//      separate "now THIS moves" handoffs. Moving them on one shared linear
-//      progress fraction removes two of those three handoffs; the algebra
-//      guarantees the right margin comes out correctly interpolated with NO
-//      clamp() of its own, since (viewport - rowWidth) is linear whenever
-//      viewport and rowWidth both are: right margin's own start (123, at
-//      PHASE_B_START) and end (40, at PHASE_B_END) values are exactly what
-//      they'd be regardless of path, so this doesn't change PHASE_B_END.
-const INTRO_PHASE_B_START =
-  INTRO_VIEWPORT_NATIVE - (INTRO_LABEL_CONTENT_GAP_NATIVE - INTRO_LABEL_CONTENT_GAP_FLOOR); // 1373.62
+// The label-content gap no longer has its own shrink phase (see
+// INTRO_LABEL_CONTENT_GAP above — it's already effectively at its floor
+// natively), so Phase B (image width, image<->label gap, and the row's own
+// right margin) starts right at the native viewport width with no dead zone
+// before it:
+//   image width (592.92->440), image<->label gap (93.70->53), and the row's
+//   own right margin (viewport - row's right edge, ~123->40) all move
+//   TOGETHER, in lockstep, across the SAME viewport range — not
+//   sequentially. An earlier revision did these three one after another
+//   (each fully bottoming out before the next started), which read as
+//   distinctly staggered/jerky while resizing ("덜그럭거리는 느낌") — three
+//   separate "now THIS moves" handoffs. Moving them on one shared linear
+//   progress fraction removes two of those three handoffs; the algebra
+//   guarantees the right margin comes out correctly interpolated with NO
+//   clamp() of its own, since (viewport - rowWidth) is linear whenever
+//   viewport and rowWidth both are: right margin's own start (123, at
+//   PHASE_B_START) and end (40, at PHASE_B_END) values are exactly what
+//   they'd be regardless of path, so this doesn't change PHASE_B_END.
+const INTRO_PHASE_B_START = INTRO_VIEWPORT_NATIVE; // 1512
 const INTRO_ROW_WIDTH_AT_FLOORS =
   INTRO_IMAGE_FLOOR_W +
   INTRO_IMAGE_LABEL_GAP_FLOOR +
   INTRO_LABEL_COL_W +
-  INTRO_LABEL_CONTENT_GAP_FLOOR +
-  INTRO_EXHIBITION_W; // 1056.99
+  INTRO_LABEL_CONTENT_GAP +
+  INTRO_EXHIBITION_W; // ~1056.83
 // Where the row layout's right margin would hit its own 40px floor — below
 // this, switch to the stacked layout (min-[1097px]/max-[1097px] below —
 // paired on the SAME value since Tailwind compiles `max-[Npx]` to
@@ -134,7 +144,6 @@ const INTRO_FOOTER_GROUP_WIDTH = 54;
 // text's real visual bottom (caught via browser preview).
 const INTRO_FOOTER_GROUP_HEIGHT = 74.609375;
 
-const introGapCss = `clamp(${px(INTRO_LABEL_CONTENT_GAP_FLOOR)}, calc(${px(INTRO_LABEL_CONTENT_GAP_NATIVE)} - (${px(INTRO_VIEWPORT_NATIVE)} - 100vw)), ${px(INTRO_LABEL_CONTENT_GAP_NATIVE)})`;
 // Phase B: image width and image<->label gap both move on the SAME linear
 // progress fraction (PHASE_B_START - 100vw) / PHASE_B_RANGE — see the
 // constants block above for why this makes the row's right margin come out
@@ -254,46 +263,62 @@ function IntroColumns({ gap }: { gap: string }) {
   return (
     <div>
       <IntroSectionRow label="introduction" gap={gap}>
-        <div className="text-[11px] leading-[1.7]" style={{ width: px(INTRO_ENGLISH_PARA_W) }}>
+        <div className="text-[11px] leading-[1.75]" style={{ width: px(INTRO_ENGLISH_PARA_W) }}>
           <p>
-            Furniture serves a clear purpose as a tool that supports everyday life, yet it also
-            exists in a state of hypothesis, as its purpose can shift through interaction with the
-            user. The functions and forms designed around the tentative expectation of “how it
-            will be used” are continually redefined through the user’s everyday life.
+            Furniture serves a clear purpose as a tool that supports everyday life,
+            <br />
+            yet it also exists in a state of hypothesis, as its purpose can shift through
+            <br />
+            interaction with the user. The functions and forms designed around the
+            <br />
+            tentative expectation of “how it will be used” are continually redefined
+            <br />
+            through the user’s everyday life.
           </p>
-          <p className="mt-4">
-            This leads to the concept of Hypothesis Furniture, in which the maker and the user
-            share the agency to determine how the furniture is used, and its existence is
-            ultimately affirmed through use in everyday life. Hypothesis Furniture is not simply
-            about transforming form. Rather, it requires structural devices that suspend a
-            singular function and leave room for multiple possibilities. I conceive of these
-            devices as &apos;parts&apos;.
+          <p style={{ marginTop: px(7) }}>
+            This leads to the concept of Hypothesis Furniture, in which the maker and
+            <br />
+            the user share the agency to determine how the furniture is used, and its
+            <br />
+            existence is ultimately affirmed through use in everyday life. Hypothesis
+            <br />
+            Furniture is not simply about transforming form. Rather, it requires structural
+            <br />
+            devices that suspend a singular function and leave room for multiple
+            <br />
+            possibilities. I conceive of these devices as &apos;parts&apos;.
           </p>
         </div>
         <div
-          className={`${pretendard.className} text-[11px] leading-[1.75]`}
-          style={{ width: px(INTRO_KOREAN_PARA_W), marginTop: px(18) }}
+          className={`${pretendard.className} text-[11px] leading-[1.8]`}
+          style={{ width: px(INTRO_KOREAN_PARA_W), marginTop: px(38) }}
         >
           <p>
             가구는 인간의 생활을 보조하는 도구라는 점에서 명확한 목적성을 담보하고 있으면서도,
-            사용자와의 상호작용에 따라 그 목적이 변모할 가능성을 지니기에 일종의 가설 상태에 놓여
-            있다. &lsquo;이렇게 쓰일 것이다&rsquo; 라는 잠정적 기대나 전제로 설계된 기능과 형태는
-            쓰는 이의 생활 속에서 끊임없이 갱신된다.
+            <br />
+            사용자와의 상호작용에 따라 그 목적이 변모할 가능성을 지니기에 일종의 가설 상태에
+            <br />
+            놓여 있다. &lsquo;이렇게 쓰일 것이다&rsquo; 라는 잠정적 기대나 전제로 설계된 기능과 형태는 쓰는
+            <br />
+            이의 생활 속에서 끊임없이 갱신된다.
           </p>
-          <p className="mt-5">
+          <p style={{ marginTop: px(7) }}>
             이는 가구를 만드는 이와 쓰는 이가 공동의 결정 권한을 가진 채, 일상에서 쓰임을 통해
-            가구의 존재가 증명되는 가설 가구 (Hypothesis Furniture) 의 개념으로 이어진다. 이때
-            가설 가구는 단순한 조형의 전환이 아니라 단일한 쓰임을 유예하고 다양한 가능성을
-            열어두는 구조적 장치를 필요로 하는데, 나는 그것을 &lsquo;파츠&rsquo;로 상정하였다.
+            <br />
+            가구의 존재가 증명되는 가설 가구 (Hypothesis Furniture) 의 개념으로 이어진다.
+            <br />
+            이때 가설 가구는 단순한 조형의 전환이 아니라 단일한 쓰임을 유예하고 다양한
+            <br />
+            가능성을 열어두는 구조적 장치를 필요로 하는데, 나는 그것을 &lsquo;파츠&rsquo;로 상정하였다.
           </p>
         </div>
       </IntroSectionRow>
-      <IntroSectionRow label="Exhibition" gap={gap} marginTop={px(128.40646362304688)}>
+      <IntroSectionRow label="Exhibition" gap={gap} marginTop={px(133)}>
         <div style={{ width: px(INTRO_EXHIBITION_W) }}>
           <ExhibitionList fontSize={11} />
         </div>
       </IntroSectionRow>
-      <IntroSectionRow label="contact" gap={gap} marginTop={px(46.4761962890625)}>
+      <IntroSectionRow label="contact" gap={gap} marginTop={px(57)}>
         <div style={{ width: px(INTRO_CONTACT_W) }}>
           <ContactBlock fontSize={11} />
         </div>
@@ -302,12 +327,13 @@ function IntroColumns({ gap }: { gap: string }) {
   );
 }
 
-// Phases A+B (viewport >= 1097px): image beside the label/content pair.
-// Pure CSS `clamp()` covers both phases continuously — each of
-// introImageWidthCss/introImageLabelGapCss/introGapCss stays clamped to its
-// own native max above its own phase's start width, so nothing extra is
-// needed here to tell the phases apart; the row's right margin shrinking to
-// 40 needs no clamp() of its own at all — see INTRO_PHASE_B_END's comment.
+// Phase B (viewport >= 1097px): image beside the label/content pair. Pure
+// CSS `clamp()` covers it continuously — each of
+// introImageWidthCss/introImageLabelGapCss stays clamped to its own native
+// max above INTRO_PHASE_B_START, so nothing extra is needed here to tell
+// widths apart; the row's right margin shrinking to 40 needs no clamp() of
+// its own at all — see INTRO_PHASE_B_END's comment. The label-content gap
+// itself is now a flat constant (INTRO_LABEL_CONTENT_GAP) — no clamp.
 function IntroRowLayout() {
   return (
     <div className="hidden min-[1097px]:flex min-[1097px]:items-start" style={{ marginTop: px(211) }}>
@@ -322,7 +348,7 @@ function IntroRowLayout() {
       </div>
       <div style={{ width: introImageLabelGapCss, flexShrink: 0 }} />
       <div style={{ marginTop: px(13) }}>
-        <IntroColumns gap={introGapCss} />
+        <IntroColumns gap={px(INTRO_LABEL_CONTENT_GAP)} />
       </div>
     </div>
   );
@@ -347,7 +373,7 @@ function IntroStackedLayout() {
         <Image src="/info/cv.png" alt="" fill className="object-cover" priority />
       </div>
       <div style={{ marginTop: px(INTRO_STACK_GAP), marginLeft: px(INTRO_STACK_TEXT_MARGIN) }}>
-        <IntroColumns gap={px(INTRO_LABEL_CONTENT_GAP_NATIVE)} />
+        <IntroColumns gap={px(INTRO_LABEL_CONTENT_GAP)} />
       </div>
     </div>
   );
@@ -418,41 +444,46 @@ function MobileInfo() {
               introduction
             </h2>
             <div
-              className="absolute text-[13px] leading-[1.7]"
+              className="absolute text-[13px] leading-[1.75]"
               style={{ left: px(46), top: px(728), width: px(538), height: px(237) }}
             >
               <p>
-                Furniture serves a clear purpose as a tool that supports everyday life, yet it also
-                exists
+                Furniture serves a clear purpose as a tool that supports everyday life,
                 <br />
-                in a state of hypothesis, as its purpose can shift through interaction with the
-                user.
+                yet it also exists in a state of hypothesis, as its purpose can shift through
                 <br />
-                The functions and forms designed around the tentative expectation of “how it will
-                be used” are continually redefined through the user’s everyday life.
+                interaction with the user. The functions and forms designed around the
+                <br />
+                tentative expectation of “how it will be used” are continually redefined
+                <br />
+                through the user’s everyday life.
               </p>
               <p className="mt-3">
-                This leads to the concept of Hypothesis Furniture, in which the maker and the user
-                share the agency to determine how the furniture is used, and its existence is
-                ultimately affirmed through use in everyday life. Hypothesis Furniture is not
-                simply about transforming form. Rather, it requires structural devices that
-                suspend a singular function and leave room
+                This leads to the concept of Hypothesis Furniture, in which the maker and
                 <br />
-                for multiple possibilities. I conceive of these devices as &apos;parts&apos;.
+                the user share the agency to determine how the furniture is used, and its
+                <br />
+                existence is ultimately affirmed through use in everyday life. Hypothesis
+                <br />
+                Furniture is not simply about transforming form. Rather, it requires structural
+                <br />
+                devices that suspend a singular function and leave room for multiple
+                <br />
+                possibilities. I conceive of these devices as &apos;parts&apos;.
               </p>
             </div>
 
             <div
-              className={`${pretendard.className} absolute text-[13px] leading-[1.75]`}
+              className={`${pretendard.className} absolute text-[13px] leading-[1.8]`}
               style={{ left: px(45), top: px(996), width: px(546), height: px(223) }}
             >
               <p>
                 가구는 인간의 생활을 보조하는 도구라는 점에서 명확한 목적성을 담보하고 있으면서도,
                 <br />
                 사용자와의 상호작용에 따라 그 목적이 변모할 가능성을 지니기에 일종의 가설 상태에
-                놓여 있다.
                 <br />
-                &lsquo;이렇게 쓰일 것이다&rsquo; 라는 잠정적 기대나 전제로 설계된 기능과 형태는 쓰는
+                놓여 있다. &lsquo;이렇게 쓰일 것이다&rsquo; 라는 잠정적 기대나 전제로 설계된 기능과 형태는 쓰는
+                <br />
                 이의 생활 속에서 끊임없이 갱신된다.
               </p>
               <p className="mt-3">
@@ -463,8 +494,7 @@ function MobileInfo() {
               <p className="mt-3">
                 이때 가설 가구는 단순한 조형의 전환이 아니라 단일한 쓰임을 유예하고 다양한
                 <br />
-                가능성을 열어두는 구조적 장치를 필요로 하는데, 나는 그것을 &lsquo;파츠&rsquo;로
-                상정하였다.
+                가능성을 열어두는 구조적 장치를 필요로 하는데, 나는 그것을 &lsquo;파츠&rsquo;로 상정하였다.
               </p>
             </div>
 

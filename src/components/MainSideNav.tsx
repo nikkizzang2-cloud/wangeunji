@@ -88,7 +88,11 @@ export default function MainSideNav({
               key={item.href}
               href={item.href}
               className={`pointer-events-auto absolute text-right capitalize ${
-                whiteOverlap ? "text-white" : pathname === item.href ? "text-[#b9b9b9]" : ""
+                whiteOverlap
+                  ? "text-white"
+                  : pathname === item.href
+                    ? "text-black"
+                    : "text-[#b9b9b9]"
               }`}
               style={{
                 right: px(DESKTOP_NAV_RIGHT_MARGIN),
@@ -112,7 +116,7 @@ export default function MainSideNav({
                 key={item.href}
                 href={item.href}
                 className={`pointer-events-auto absolute text-right capitalize ${
-                  pathname === item.href ? "font-bold" : ""
+                  pathname === item.href ? "text-black" : "text-[#b9b9b9]"
                 }`}
                 style={{
                   left: px(682),

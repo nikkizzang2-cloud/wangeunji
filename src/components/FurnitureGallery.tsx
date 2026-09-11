@@ -31,7 +31,11 @@ const GRID_RESERVED_WIDTH = LEFT_MARGIN + NAV_RESERVED_WIDTH;
 // tiles and year labels are already local to the group in the coordinates
 // below, unlike PartsGallery which had to compute this by hand across 53
 // loose tiles — this page's whole grid is one named Figma group already).
-const GRID_ANCHOR_TOP = 188;
+// Shifted up 8px from Figma's 188 (and the statement text's 146->138, same
+// delta) per explicit request to tighten the topbar-statement gap by 8px —
+// every OTHER gap below stays exactly as Figma specified (see
+// PartsGallery.tsx's identical change).
+const GRID_ANCHOR_TOP = 180;
 
 // Native (unscaled) grid content size — "Group 268"'s own declared
 // width/height, not the full 1512px frame width.
@@ -156,9 +160,13 @@ function DesktopFurnitureGallery({ scrollRef, f15Ref }: DesktopFurnitureGalleryP
   const [hoveredId, setHoveredId] = useState<number | null>(null);
 
   return (
+    // max-h-screen, not h-screen — same fix as PartsGallery.tsx's identical
+    // change: caps at 100vh for tall content (still scrolls internally) but
+    // shrinks to fit shorter content instead of leaving growing blank space
+    // below the footer as the grid shrinks.
     <div
       ref={scrollRef}
-      className="figma-collision-scale hidden h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] min-[800px]:block"
+      className="figma-collision-scale hidden max-h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] min-[800px]:block"
       style={{
         ["--fcol-reserved" as string]: px(GRID_RESERVED_WIDTH),
         ["--fcol-width" as string]: px(SCALE_REFERENCE_WIDTH),
@@ -179,7 +187,7 @@ function DesktopFurnitureGallery({ scrollRef, f15Ref }: DesktopFurnitureGalleryP
         {/* Statement text: literally fixed, left margin never shrinks. */}
         <div
           className="absolute text-[10px] text-[#696969] capitalize leading-[1.4]"
-          style={{ left: px(LEFT_MARGIN), top: px(146), width: px(727) }}
+          style={{ left: px(LEFT_MARGIN), top: px(138), width: px(727) }}
         >
           <p>{STATEMENT_LINE_1}</p>
           <p>{STATEMENT_LINE_2}</p>
@@ -218,12 +226,20 @@ function DesktopFurnitureGallery({ scrollRef, f15Ref }: DesktopFurnitureGalleryP
                     setHoveredId((current) => (current === item.id ? null : current))
                   }
                 >
+                  {/* Base image + stacked, opacity-faded hover image — see
+                      PartsGallery.tsx's identical comment for why (no
+                      built-in crossfade for a plain `src` swap). */}
                   {item.image && (
+                    <Image src={item.image} alt={item.title} fill className="object-cover" />
+                  )}
+                  {item.hoverImage && (
                     <Image
-                      src={isHovered && item.hoverImage ? item.hoverImage : item.image}
+                      src={item.hoverImage}
                       alt={item.title}
                       fill
-                      className="object-cover"
+                      className={`object-cover transition-opacity duration-300 ${
+                        isHovered ? "opacity-100" : "opacity-0"
+                      }`}
                     />
                   )}
                   {isHovered && <HoverInfo item={item} />}
@@ -326,7 +342,18 @@ const MOBILE_YEAR_LABELS: [year: string, y: number][] = [
 ];
 
 const MOBILE_TILE_X = 45;
-const MOBILE_LAST_TILE_BOTTOM = 5630.841796875 + 343.2852478027344; // f17
+
+// Topbar-statement gap tightened by 8px, same request as PartsGallery.tsx's
+// identical change — applied uniformly to every absolute Y position below
+// (statement, each tile, each year label, the footer) rather than editing
+// each of MOBILE_TILES/MOBILE_YEAR_LABELS' individually-placed raw Figma
+// values by hand, since those aren't derived from a single shiftable anchor
+// (unlike PartsGallery's mobile tiles, which cascade from one
+// MOBILE_FIRST_TILE_TOP constant). Every OTHER gap stays exactly as placed
+// in Figma, since they're all shifted by the identical amount.
+const MOBILE_Y_SHIFT = 8;
+
+const MOBILE_LAST_TILE_BOTTOM = 5630.841796875 + 343.2852478027344 - MOBILE_Y_SHIFT; // f17
 
 // Footer margin per explicit spec ("마지막 사각형과 위로 180px 아래로
 // 35px") — matches the placed footer exactly (logo top - last tile bottom
@@ -366,7 +393,7 @@ function MobileFurnitureGallery() {
           <div className="figma-canvas-content">
             <div
               className="absolute text-[13px] text-[#696969] capitalize leading-[1.4]"
-              style={{ left: px(45), top: px(158), width: px(727) }}
+              style={{ left: px(45), top: px(150), width: px(727) }}
             >
               <p>{STATEMENT_LINE_1}</p>
               <p>{STATEMENT_LINE_2}</p>
@@ -381,15 +408,25 @@ function MobileFurnitureGallery() {
                   key={item.id}
                   href={`/caption/${item.slug}`}
                   className="absolute overflow-hidden bg-neutral-200"
-                  style={{ left: px(MOBILE_TILE_X), top: px(y), width: px(w), height: px(h) }}
+                  style={{
+                    left: px(MOBILE_TILE_X),
+                    top: px(y - MOBILE_Y_SHIFT),
+                    width: px(w),
+                    height: px(h),
+                  }}
                   onClick={(event) => handleTap(event, item.id)}
                 >
                   {item.image && (
+                    <Image src={item.image} alt={item.title} fill className="object-cover" />
+                  )}
+                  {item.hoverImage && (
                     <Image
-                      src={isActive && item.hoverImage ? item.hoverImage : item.image}
+                      src={item.hoverImage}
                       alt={item.title}
                       fill
-                      className="object-cover"
+                      className={`object-cover transition-opacity duration-300 ${
+                        isActive ? "opacity-100" : "opacity-0"
+                      }`}
                     />
                   )}
                   {isActive && <HoverInfo item={item} />}
@@ -401,7 +438,7 @@ function MobileFurnitureGallery() {
               <p
                 key={year}
                 className="absolute text-[13px] text-[#6f6f6f] capitalize leading-relaxed"
-                style={{ left: px(45), top: px(y) }}
+                style={{ left: px(45), top: px(y - MOBILE_Y_SHIFT) }}
               >
                 {year}
               </p>

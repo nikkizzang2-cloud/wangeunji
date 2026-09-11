@@ -38,7 +38,12 @@ const GRID_RESERVED_WIDTH = LEFT_MARGIN + NAV_RESERVED_WIDTH;
 // topmost tile (185, Rectangles 3/4) — same convention as every other
 // element on this page: use get_metadata's raw px directly, no synthetic
 // "gap" formula.
-const GRID_ANCHOR_TOP = 185;
+// Shifted up 8px from Figma's 185 (and the statement text's 146->138, same
+// delta) per explicit request to tighten the topbar-statement gap by 8px —
+// every OTHER gap below (statement-grid, grid-footer, etc.) must stay
+// exactly as Figma specified, so shifting both anchors by the same amount
+// preserves them; the page's total scroll height shrinks by exactly 8px too.
+const GRID_ANCHOR_TOP = 177;
 
 // Native (unscaled) grid content size, measured edge-to-edge across the 53
 // tiles below (min x=35 treated as local 0 via LEFT_MARGIN, min y=185 via
@@ -195,8 +200,18 @@ function DesktopPartsGallery() {
   const [hoveredId, setHoveredId] = useState<number | null>(null);
 
   return (
+    // max-h-screen, not h-screen: was previously an exact 100vh, which left
+    // growing blank space below the footer as the grid shrank (its scaled
+    // height, and so the whole page's real content height, drops below
+    // 100vh at narrower widths, but a plain h-screen container doesn't
+    // shrink to match — the fixed-size PAGE_BOTTOM_PADDING below the footer
+    // stayed correct in isolation, but the leftover 100vh-vs-content gap
+    // read as an ever-growing margin). max-h-screen caps at 100vh (so tall
+    // content still scrolls internally, same as before) but lets the
+    // container shrink to fit shorter content, so the page's total scroll
+    // length shrinks right along with the grid.
     <div
-      className="figma-collision-scale hidden h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] min-[800px]:block"
+      className="figma-collision-scale hidden max-h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] min-[800px]:block"
       style={{
         ["--fcol-reserved" as string]: px(GRID_RESERVED_WIDTH),
         ["--fcol-width" as string]: px(GRID_NATIVE_WIDTH),
@@ -204,13 +219,15 @@ function DesktopPartsGallery() {
     >
       {/* Establishes the page's actual (scale-dependent) content height for
           the outer div's overflow-y-auto to scroll — kept as a separate
-          inner element so the outer div itself stays exactly h-screen
-          (100vh); a min-height on the outer div directly would win over
-          `h-screen`'s height:100vh whenever content is taller, making the
-          outer div itself grow to full content height instead of scrolling
-          internally — content would then overflow into a document-level
-          scrollbar instead (confirmed via a 15px viewport/clientWidth gap
-          matching a document scrollbar, when it should have had none). */}
+          inner element so the outer div's own height stays driven by
+          `max-h-screen` (caps at 100vh, but shrinks below it when content is
+          shorter — see the outer div's own comment). A min-height on the
+          outer div directly would win over `max-h-screen`'s cap whenever
+          content is taller, making the outer div itself grow to full
+          content height instead of scrolling internally — content would
+          then overflow into a document-level scrollbar instead (confirmed
+          via a 15px viewport/clientWidth gap matching a document scrollbar,
+          when it should have had none). */}
       <div
         className="relative"
         style={{
@@ -220,7 +237,7 @@ function DesktopPartsGallery() {
         {/* Statement text: literally fixed, left margin never shrinks. */}
         <div
           className="absolute text-[10px] text-[#696969] capitalize leading-[1.4]"
-          style={{ left: px(LEFT_MARGIN), top: px(146), width: px(727) }}
+          style={{ left: px(LEFT_MARGIN), top: px(138), width: px(727) }}
         >
           <p>{STATEMENT_LINE_1}</p>
           <p>{STATEMENT_LINE_2}</p>
@@ -253,13 +270,30 @@ function DesktopPartsGallery() {
                   setHoveredId((current) => (current === item.id ? null : current))
                 }
               >
+                {/* Base image (always rendered) + a stacked hover image
+                    faded in via opacity, rather than swapping `src`
+                    directly — Next Image has no built-in crossfade for a
+                    `src` change (it's an instant cut), so a smooth
+                    transition needs two images layered instead. Instagram
+                    items never had a hover-image swap (their hover effect
+                    is the darkening filter on the base image instead). */}
                 {item.image && (
                   <Image
-                    src={!isInstagram && isHovered && item.hoverImage ? item.hoverImage : item.image}
+                    src={item.image}
                     alt={item.title}
                     fill
-                    className={`object-cover transition-[filter] duration-200 ${
+                    className={`object-cover transition-[filter] duration-300 ${
                       isInstagram && isHovered ? "brightness-50" : ""
+                    }`}
+                  />
+                )}
+                {!isInstagram && item.hoverImage && (
+                  <Image
+                    src={item.hoverImage}
+                    alt={item.title}
+                    fill
+                    className={`object-cover transition-opacity duration-300 ${
+                      isHovered ? "opacity-100" : "opacity-0"
                     }`}
                   />
                 )}
@@ -322,7 +356,7 @@ function DesktopPartsGallery() {
 // its Figma "Rectangle N" identity) instead of re-transcribing 53 numbers by
 // hand, then stacks them in strict number order with a running Y cursor.
 const MOBILE_TILE_GAP = 15;
-const MOBILE_FIRST_TILE_TOP = 217;
+const MOBILE_FIRST_TILE_TOP = 209; // shifted up 8px, same -8 as desktop's GRID_ANCHOR_TOP
 const MOBILE_TILE_X = 45;
 
 const RECTANGLE_WH_BY_NUMBER = new Map<number, [w: number, h: number]>();
@@ -386,7 +420,7 @@ function MobilePartsGallery() {
           <div className="figma-canvas-content">
             <div
               className="absolute text-[13px] text-[#696969] capitalize leading-[1.4]"
-              style={{ left: px(45), top: px(158), width: px(568) }}
+              style={{ left: px(45), top: px(150), width: px(568) }}
             >
               <p>{STATEMENT_LINE_1}</p>
               <p>{STATEMENT_LINE_2}</p>
@@ -402,15 +436,26 @@ function MobilePartsGallery() {
                   style={{ left: px(x), top: px(y), width: px(w), height: px(h) }}
                   onClick={(event) => handleTap(event, item.id)}
                 >
+                  {/* Base image + stacked, opacity-faded hover image — see
+                      the desktop grid's identical comment for why (no
+                      built-in crossfade for a plain `src` swap). */}
                   {item.image && (
                     <Image
-                      src={
-                        !isInstagram && isActive && item.hoverImage ? item.hoverImage : item.image
-                      }
+                      src={item.image}
                       alt={item.title}
                       fill
-                      className={`object-cover transition-[filter] duration-200 ${
+                      className={`object-cover transition-[filter] duration-300 ${
                         isInstagram && isActive ? "brightness-50" : ""
+                      }`}
+                    />
+                  )}
+                  {!isInstagram && item.hoverImage && (
+                    <Image
+                      src={item.hoverImage}
+                      alt={item.title}
+                      fill
+                      className={`object-cover transition-opacity duration-300 ${
+                        isActive ? "opacity-100" : "opacity-0"
                       }`}
                     />
                   )}
