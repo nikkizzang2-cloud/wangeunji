@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import localFont from "next/font/local";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { CaptionWork } from "@/data/works";
 import { CAPTION_MEDIA, type CaptionMediaItem } from "@/data/captionMedia";
 import { splitDimensionUnits } from "@/data/partsInfo";
@@ -32,6 +32,21 @@ const TOPBAR_HEIGHT = 64;
 // DesktopCaption's `overflow-y-auto` + the viewport-pinned text below). 69
 // matches node 72:1167's own native y (64 + 5).
 const CAROUSEL_TOP_OFFSET = TOPBAR_HEIGHT + 5;
+
+// A later explicit follow-up asked for one narrow exception to the "height
+// never moves the carousel" rule above: when the viewport is tall enough
+// that the carousel doesn't need to scroll at all, its BOTTOM should sit
+// flush against the viewport's own bottom edge (0 margin) instead of
+// leaving that leftover height as dead space below the photo — still never
+// changing the carousel's own WIDTH-driven size, only where its fixed-size
+// box sits vertically. `max()` picks whichever is larger: the normal fixed
+// CAROUSEL_TOP_OFFSET, or (100vh - the carousel's own current height) —
+// once the viewport is tall enough that the latter exceeds the former, the
+// carousel's top slides down to keep its bottom edge exactly at 100vh;
+// below that height, this is identical to the plain CAROUSEL_TOP_OFFSET
+// from before (scrolling, cropped from the top, exactly as documented
+// above) since the "slide down" term goes negative and loses to it.
+const carouselTopCss = `max(${px(CAROUSEL_TOP_OFFSET)}, calc(100vh - var(--cap-h)))`;
 
 // Three breakpoint anchors, read directly off the reference frames' own
 // widths (each frame is named after its width): "caption 1920" (actual
@@ -347,7 +362,7 @@ function CarouselButton({ side, work, onAdvance, isTextSlide, item }: CarouselBu
       className="absolute cursor-pointer touch-manipulation overflow-hidden bg-[#f8f8f8]"
       style={{
         [side]: 0,
-        top: px(CAROUSEL_TOP_OFFSET),
+        top: carouselTopCss,
         width: "var(--cap-w)",
         height: "var(--cap-h)",
       }}
@@ -397,6 +412,21 @@ function DesktopCaption({ work }: CaptionCarouselProps) {
 
   const isRightTextSlide = rightIndex === rightCount;
 
+  // A `position:fixed` descendant of this `overflow-y-auto` container
+  // doesn't reliably chain mouse-wheel scrolling back up to it in every
+  // browser (reported: scrolling over the center gap, the title, or the
+  // info/caption box — all `fixed`, height>=750 only — did nothing,
+  // "가운데는 스크롤이 안넘어감"). Forwarding the wheel delta to the
+  // container by hand sidesteps that inconsistency entirely instead of
+  // relying on the browser's own scroll-chaining across the fixed
+  // boundary. The height<750 fallbacks don't need this — they're plain
+  // `absolute` descendants of the SAME container, which already scroll
+  // with it normally.
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const forwardWheelToContainer = (event: React.WheelEvent) => {
+    scrollContainerRef.current?.scrollBy({ top: event.deltaY, left: event.deltaX });
+  };
+
   return (
     // "1200" here must match STAGE3_END_VW by hand (Tailwind needs a
     // literal string) — paired with CompactCaption's `max-[1200px]` below on
@@ -408,6 +438,7 @@ function DesktopCaption({ work }: CaptionCarouselProps) {
     // fixed header stays put regardless, since it's `position:fixed`,
     // independent of this container's scroll.
     <div
+      ref={scrollContainerRef}
       className="relative hidden h-screen overflow-y-auto bg-[#f8f8f8] min-[1200px]:block"
       style={{
         ["--cap-w" as string]: carouselWidthCss,
@@ -441,6 +472,7 @@ function DesktopCaption({ work }: CaptionCarouselProps) {
         <button
           type="button"
           onClick={advanceRight}
+          onWheel={forwardWheelToContainer}
           aria-label="Next right image"
           className="fixed hidden cursor-pointer touch-manipulation flex-col [@media(min-height:750px)]:flex"
           // will-change: forces its own compositor layer — reported to fix a
@@ -478,12 +510,13 @@ function DesktopCaption({ work }: CaptionCarouselProps) {
           advanceLeft();
           advanceRight();
         }}
+        onWheel={forwardWheelToContainer}
         aria-label="Next image (both)"
         className="fixed hidden cursor-pointer touch-manipulation [@media(min-height:750px)]:block"
         style={{
           left: "var(--cap-w)",
           right: "var(--cap-w)",
-          top: px(CAROUSEL_TOP_OFFSET),
+          top: carouselTopCss,
           height: "var(--cap-h)",
         }}
       />
@@ -496,6 +529,7 @@ function DesktopCaption({ work }: CaptionCarouselProps) {
           advanceLeft();
           advanceRight();
         }}
+        onWheel={forwardWheelToContainer}
         aria-label="Next image (both)"
         className="fixed hidden cursor-pointer touch-manipulation flex-col text-left leading-[1.5] capitalize [@media(min-height:750px)]:flex"
         // will-change: same Chrome-only "scrolls with the photos instead of
@@ -521,7 +555,7 @@ function DesktopCaption({ work }: CaptionCarouselProps) {
         style={{
           left: "var(--cap-w)",
           right: "var(--cap-w)",
-          top: px(CAROUSEL_TOP_OFFSET),
+          top: carouselTopCss,
           height: "var(--cap-h)",
         }}
       />
@@ -539,7 +573,7 @@ function DesktopCaption({ work }: CaptionCarouselProps) {
         className="absolute cursor-pointer touch-manipulation [@media(min-height:750px)]:hidden"
         style={{
           left: `calc(var(--cap-w) + ${titleLeftMarginCss})`,
-          top: px(CAROUSEL_TOP_OFFSET),
+          top: carouselTopCss,
           height: "var(--cap-h)",
         }}
       >

@@ -17,12 +17,12 @@ const NAV_ITEMS = [
 // Figma "main.parts" frame (get_metadata nodeId 117:2): width=1512. Desktop
 // nav is now literally fixed-px, right-anchored by a margin that never
 // shrinks ("furniture/parts 메뉴는 margin-right 고정") — width=78,
-// right margin = 1512 - 1394 - 78 = 40px. Stacked with 0 gap (furniture
-// y=200 h=15, parts y=215 h=15). Both labels are always plain black text —
-// the current page is indicated by font-weight (bold) once one has been
-// picked (see hasSelected below), not by a muted color anymore (an earlier
-// revision used `#b9b9b9` gray for the inactive label; explicit follow-up
-// request replaced that with "inactive stays regular black" instead).
+// right margin = 1512 - 1394 - 78 = 40px. Stacked with 0 gap (h=15 each).
+// Both labels are always plain black text — the current page is indicated
+// by font-weight (bold) once one has been picked (see hasSelected below),
+// not by a muted color anymore (an earlier revision used `#b9b9b9` gray
+// for the inactive label; explicit follow-up request replaced that with
+// "inactive stays regular black" instead).
 // DESKTOP_NAV_WIDTH grows via `growWith(10, ...)` past 1700px viewport
 // width (site-wide font-grow request — see `fontgrow`'s own comment,
 // figma-layout.ts) so the box still fits the bigger text; the right margin
@@ -30,17 +30,28 @@ const NAV_ITEMS = [
 // grid, not toward the viewport edge.
 const DESKTOP_NAV_WIDTH = 78;
 const DESKTOP_NAV_RIGHT_MARGIN = 40;
-// "furniture"'s own rendered line-height at 10px is 15px (h=15 above), which
-// is also the flat gap-free stack step to "parts" below it — that stops
-// being true once the font grows past 1700px (a taller line needs a taller
-// step, or the two labels start clipping into each other), so "parts"'s own
-// top is computed FROM "furniture"'s rather than as its own flat 215
-// literal: 200 + growWith(10, 15) — 215 unchanged below 1700px, growing in
-// lockstep with the font above it so the "0 gap" stacking always holds.
+// "furniture"'s own top (135, originally 200): explicit follow-up request
+// to reduce the menu's own top margin so it starts on the SAME line as the
+// statement text in PartsGallery.tsx/FurnitureGallery.tsx (top: 135 there,
+// desktop) — same reasoning as MOBILE_NAV_ITEMS below, just for the
+// desktop stage.
+//
+// "furniture"'s own rendered line-height at 10px is 15px, which is also
+// the flat gap-free stack step to "parts" below it — that stops being true
+// once the font grows past 1700px (a taller line needs a taller step, or
+// the two labels start clipping into each other), so "parts"'s own top is
+// computed FROM "furniture"'s rather than as its own flat literal:
+// 135 + growWith(10, 15) — unchanged below 1700px, growing in lockstep
+// with the font above it so the "0 gap" stacking always holds.
+const DESKTOP_NAV_TOP = 135;
 const DESKTOP_NAV_ITEM_STEP = 15;
 const DESKTOP_NAV_ITEMS = [
-  { label: "furniture", href: "/main/furniture", top: px(200) },
-  { label: "Parts", href: "/main/parts", top: `calc(${px(200)} + ${growWith(10, DESKTOP_NAV_ITEM_STEP)})` },
+  { label: "furniture", href: "/main/furniture", top: px(DESKTOP_NAV_TOP) },
+  {
+    label: "Parts",
+    href: "/main/parts",
+    top: `calc(${px(DESKTOP_NAV_TOP)} + ${growWith(10, DESKTOP_NAV_ITEM_STEP)})`,
+  },
 ] as const;
 
 // Below the site-wide mobile toggle width (700px, see TopBar.tsx), the
