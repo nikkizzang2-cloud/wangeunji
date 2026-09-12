@@ -5,7 +5,7 @@ import Link from "next/link";
 import { EB_Garamond } from "next/font/google";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { furnitureGallery, type GalleryItem } from "@/data/works";
-import { px } from "@/lib/figma-layout";
+import { fontgrow, growWith, px } from "@/lib/figma-layout";
 import { useHasHover } from "@/lib/useHasHover";
 import MainSideNav from "./MainSideNav";
 
@@ -40,12 +40,28 @@ const GRID_RESERVED_WIDTH = LEFT_MARGIN + NAV_RESERVED_WIDTH;
 // see TopBar.tsx) — shifted here by that same 3px (180->177, statement text
 // 138->135), see PartsGallery.tsx's identical change; the mobile branch
 // below is untouched since that request was desktop-only.
-const GRID_ANCHOR_TOP = 177;
+// A further explicit request pointed out the statement-text-to-grid gap
+// didn't match PartsGallery's (14px here vs. 11px there, despite identical
+// statement text) and asked for the two to be unified on parts' own value —
+// 177->174, matching PartsGallery.tsx's GRID_ANCHOR_TOP exactly.
+const GRID_ANCHOR_TOP = 174;
+// A further explicit follow-up tightens ONLY the statement-text-to-grid
+// gap by another 3px past 1800px viewport width — see PartsGallery.tsx's
+// identical `GRID_ANCHOR_TOP_CSS` for the full reasoning.
+const GRID_ANCHOR_TOP_CSS = `calc(${px(GRID_ANCHOR_TOP)} + var(--grid-anchor-adjust-1800))`;
 
 // Native (unscaled) grid content size — "Group 268"'s own declared
 // width/height, not the full 1512px frame width.
 const GRID_NATIVE_WIDTH = 1147.0001220703125;
 const GRID_NATIVE_HEIGHT = 2098.456298828125;
+
+// Explicit request: past 1700px viewport width the grid should ALSO grow
+// past its native size — scaling up from 1x to GRID_GROWN_WIDTH/
+// GRID_NATIVE_WIDTH between 1700 and 1920px, then holding at that larger
+// size above 1920px — see PartsGallery.tsx's identical change and
+// `.figma-collision-scale`'s own comment (globals.css) for the mechanism.
+const GRID_GROWN_WIDTH = 1320;
+const GRID_GROW_MAX = GRID_GROWN_WIDTH / GRID_NATIVE_WIDTH - 1;
 
 // Explicit request: furniture's shrink point should line up with parts'
 // (viewport 1158px, not furniture's own true 1300px = 153 reserved +
@@ -133,6 +149,12 @@ const STATEMENT_LINE_2 =
 // Same hover/tap info layer for both desktop (hover) and mobile (tap) —
 // "호버시 뜨는 정보는 기존의 텍스트 박스와 동일한 형식으로" — identical
 // markup/sizes, just triggered by a different interaction.
+//
+// Deliberately NOT wired into the site-wide `fontgrow`/`growWith` past-1800px
+// font growth (see figma-layout.ts) — see PartsGallery.tsx's identical
+// comment: this tree sits inside the grid's own `zoom: var(--fcol-scale)`
+// container, which already grows it (text included) as part of the
+// EARLIER past-1700px grid growth request.
 function HoverInfo({ item }: { item: GalleryItem }) {
   if (!item.partsInfo) return null;
   return (
@@ -199,6 +221,7 @@ function DesktopFurnitureGallery({ scrollRef, f15Ref }: DesktopFurnitureGalleryP
       style={{
         ["--fcol-reserved" as string]: px(GRID_RESERVED_WIDTH),
         ["--fcol-width" as string]: px(SCALE_REFERENCE_WIDTH),
+        ["--fcol-grow-max" as string]: GRID_GROW_MAX,
       }}
     >
       {/* Separate inner element carrying the page's actual (scale-dependent)
@@ -210,13 +233,22 @@ function DesktopFurnitureGallery({ scrollRef, f15Ref }: DesktopFurnitureGalleryP
       <div
         className="relative"
         style={{
-          minHeight: `calc(${px(GRID_ANCHOR_TOP)} + ${px(GRID_NATIVE_HEIGHT)} * var(--fcol-scale) + ${px(FOOTER_GAP)} + ${px(FOOTER_GROUP_HEIGHT)} + ${px(PAGE_BOTTOM_PADDING)})`,
+          minHeight: `calc(${GRID_ANCHOR_TOP_CSS} + ${px(GRID_NATIVE_HEIGHT)} * var(--fcol-scale) + ${px(FOOTER_GAP)} + ${px(FOOTER_GROUP_HEIGHT)} + ${px(PAGE_BOTTOM_PADDING)})`,
         }}
       >
-        {/* Statement text: literally fixed, left margin never shrinks. */}
+        {/* Statement text: literally fixed, left margin never shrinks. Font
+            size + box width both grow past 1800px viewport width (site-wide
+            font-grow request — see `fontgrow`'s own comment,
+            figma-layout.ts); the left anchor stays fixed, so the box
+            widens to the right. */}
         <div
-          className="absolute text-[10px] text-[#696969] capitalize leading-[1.4]"
-          style={{ left: px(LEFT_MARGIN), top: px(135), width: px(727) }}
+          className="absolute text-[#696969] capitalize leading-[1.4]"
+          style={{
+            left: px(LEFT_MARGIN),
+            top: px(135),
+            width: growWith(10, 727),
+            fontSize: fontgrow(10),
+          }}
         >
           <p>{STATEMENT_LINE_1}</p>
           <p>{STATEMENT_LINE_2}</p>
@@ -232,7 +264,7 @@ function DesktopFurnitureGallery({ scrollRef, f15Ref }: DesktopFurnitureGalleryP
             grid were still at its full unscaled height, leaving a growing
             gap between the (correctly-positioned) footer and the page's
             real bottom once the grid actually shrank below scale 1. */}
-        <div className="absolute" style={{ left: px(LEFT_MARGIN), top: px(GRID_ANCHOR_TOP) }}>
+        <div className="absolute" style={{ left: px(LEFT_MARGIN), top: GRID_ANCHOR_TOP_CSS }}>
           <div
             className="relative"
             style={{
@@ -300,15 +332,20 @@ function DesktopFurnitureGallery({ scrollRef, f15Ref }: DesktopFurnitureGalleryP
           style={{
             left: "50vw",
             width: px(FOOTER_GROUP_WIDTH),
-            top: `calc(${px(GRID_ANCHOR_TOP)} + ${px(GRID_NATIVE_HEIGHT)} * var(--fcol-scale) + ${px(FOOTER_GAP)})`,
+            top: `calc(${GRID_ANCHOR_TOP_CSS} + ${px(GRID_NATIVE_HEIGHT)} * var(--fcol-scale) + ${px(FOOTER_GAP)})`,
           }}
         >
           <div className="relative" style={{ width: px(FOOTER_LOGO.w), height: px(FOOTER_LOGO.h) }}>
             <Image src="/main/logo.png" alt="" fill className="object-contain" />
           </div>
           <p
-            className="absolute whitespace-nowrap text-[8px] text-[#818181]"
-            style={{ left: px(FOOTER_TEXT.x), top: px(FOOTER_TEXT.y), width: px(FOOTER_TEXT.w) }}
+            className="absolute whitespace-nowrap text-[#818181]"
+            style={{
+              left: px(FOOTER_TEXT.x),
+              top: px(FOOTER_TEXT.y),
+              width: px(FOOTER_TEXT.w),
+              fontSize: fontgrow(8),
+            }}
           >
             Eunji Wang©
           </p>

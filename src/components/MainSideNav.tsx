@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { createFigmaGeom, px } from "@/lib/figma-layout";
+import { createFigmaGeom, fontgrow, growWith, px } from "@/lib/figma-layout";
 
 // Figma "/main" frame (get_metadata nodeId 23:1023): width=1920. This
 // sidebar nav is shared chrome between /main/parts and /main/furniture.
@@ -23,11 +23,24 @@ const NAV_ITEMS = [
 // picked (see hasSelected below), not by a muted color anymore (an earlier
 // revision used `#b9b9b9` gray for the inactive label; explicit follow-up
 // request replaced that with "inactive stays regular black" instead).
+// DESKTOP_NAV_WIDTH grows via `growWith(10, ...)` past 1800px viewport
+// width (site-wide font-grow request — see `fontgrow`'s own comment,
+// figma-layout.ts) so the box still fits the bigger text; the right margin
+// stays fixed, so the (now-wider) box extends further left, toward the
+// grid, not toward the viewport edge.
 const DESKTOP_NAV_WIDTH = 78;
 const DESKTOP_NAV_RIGHT_MARGIN = 40;
+// "furniture"'s own rendered line-height at 10px is 15px (h=15 above), which
+// is also the flat gap-free stack step to "parts" below it — that stops
+// being true once the font grows past 1800px (a taller line needs a taller
+// step, or the two labels start clipping into each other), so "parts"'s own
+// top is computed FROM "furniture"'s rather than as its own flat 215
+// literal: 200 + growWith(10, 15) — 215 unchanged below 1800px, growing in
+// lockstep with the font above it so the "0 gap" stacking always holds.
+const DESKTOP_NAV_ITEM_STEP = 15;
 const DESKTOP_NAV_ITEMS = [
-  { label: "furniture", href: "/main/furniture", y: 200 },
-  { label: "parts", href: "/main/parts", y: 215 },
+  { label: "furniture", href: "/main/furniture", top: px(200) },
+  { label: "Parts", href: "/main/parts", top: `calc(${px(200)} + ${growWith(10, DESKTOP_NAV_ITEM_STEP)})` },
 ] as const;
 
 // Below the site-wide mobile toggle width (700px, see TopBar.tsx), the
@@ -39,7 +52,7 @@ const DESKTOP_NAV_ITEMS = [
 // numbers.
 const MOBILE_NAV_ITEMS = [
   { label: "furniture", href: "/main/furniture", y: 301 },
-  { label: "parts", href: "/main/parts", y: 319 },
+  { label: "Parts", href: "/main/parts", y: 319 },
 ] as const;
 
 type MainSideNavProps = {
@@ -146,9 +159,9 @@ export default function MainSideNav({
               } ${hasSelected && pathname === item.href ? "font-bold" : ""}`}
               style={{
                 right: px(DESKTOP_NAV_RIGHT_MARGIN),
-                top: px(item.y),
-                width: px(DESKTOP_NAV_WIDTH),
-                fontSize: px(10),
+                top: item.top,
+                width: growWith(10, DESKTOP_NAV_WIDTH),
+                fontSize: fontgrow(10),
               }}
             >
               {item.label}

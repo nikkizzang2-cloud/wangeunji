@@ -314,7 +314,10 @@ function LockComposition({
   if (!scale) {
     return (
       <div className={`relative flex h-dvh items-center justify-center overflow-hidden bg-[#f8f8f8] ${className}`}>
-        <div className="relative shrink-0" style={{ width: px(canvasWidth), height: px(canvasHeight) }}>
+        <div
+          className="intro-lock-grow relative shrink-0"
+          style={{ width: px(canvasWidth), height: px(canvasHeight) }}
+        >
           {lockPieces}
         </div>
       </div>

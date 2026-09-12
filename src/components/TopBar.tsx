@@ -3,10 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CONTACT_EMAIL } from "@/lib/constants";
-import { px } from "@/lib/figma-layout";
+import { fontgrow, px } from "@/lib/figma-layout";
 
+// `fontgrow(N)` on desktop's font sizes below: explicit site-wide request
+// (see `fontgrow`'s own comment, figma-layout.ts) for every font to jump
+// +1.5pt past 1800px viewport width. No text-box widths here need a paired
+// `growWith` — the logo and nav labels are short, auto-width text with no
+// fixed wrap-width to keep in sync.
+//
 // Figma "main.parts" frame (get_metadata nodeId 117:2): width=1512. The nav
-// row (wang eun ji / home / info / contact) sits at its own y=25. Below the
+// row (Wang eun ji / Home / Info / Contact) sits at its own y=25. Below the
 // mobile toggle width (700px, hardcoded directly into the `min-[700px]:`
 // classes below — Tailwind's JIT scanner needs a literal string, not a
 // template-interpolated constant, to generate the corresponding CSS), a
@@ -34,12 +40,12 @@ import { px } from "@/lib/figma-layout";
 const MOBILE_DESIGN_WIDTH = 800;
 
 const DESKTOP_NAV = [
-  { href: "/main/parts", label: "home", left: 187.875 },
-  { href: "/info", label: "info", left: 294.2578125 },
+  { href: "/main/parts", label: "Home", left: 187.875 },
+  { href: "/info", label: "Info", left: 294.2578125 },
 ] as const;
 const MOBILE_NAV = [
-  { href: "/main/parts", label: "home", left: 207 },
-  { href: "/info", label: "info", left: 321 },
+  { href: "/main/parts", label: "Home", left: 207 },
+  { href: "/info", label: "Info", left: 321 },
 ] as const;
 
 // Fixed (not sticky) and out of document flow, so it floats over every
@@ -47,13 +53,21 @@ const MOBILE_NAV = [
 // it since that height never changes; as the user scrolls, content passes
 // underneath and shows through the transparent background.
 //
-// `min-[700px]:-top-[3px]`: explicit request to move the topbar (and every
+// `min-[700px]:-top-[5px]`: an explicit request moved the topbar (and every
 // page's own top-anchored content directly below it — PartsGallery.tsx/
 // FurnitureGallery.tsx's GRID_ANCHOR_TOP+statement text, info/page.tsx's
-// IntroRowLayout/IntroStackedLayout marginTop) up 3px as one unit, so the
-// gap between topbar and content stays exactly as designed while the total
-// scrollable height shrinks by 3px — desktop (>=700px) only, per explicit
-// request not to touch the mobile layout.
+// IntroRowLayout/IntroStackedLayout marginTop) up 3px as one unit, desktop
+// (>=700px) only. A later explicit follow-up moved the topbar up an
+// additional 2px on its own this time — content stays where the first
+// request left it, so the topbar-content gap is now 2px larger than
+// Figma's original spec (177 = -3 + -2 total on the topbar; 174 = -3 total
+// on the content, per those other files' own comments). Mobile is
+// untouched by either request.
+//
+// `.topbar-header` (globals.css): a THIRD, later explicit follow-up moves
+// the topbar back down 2px past 1800px viewport width specifically — -5px
+// + 2px = -3px there, while staying at the full -5px between 700px and
+// 1800px.
 export default function TopBar() {
   // Explicit user brief: the caption page's nav text is a different fixed
   // color (#b9b9b9) than everywhere else on the site — everything else
@@ -77,31 +91,31 @@ export default function TopBar() {
   const homeHref = isIntroPage ? "/intro?unlock=1" : "/main/parts";
 
   return (
-    <header className="fixed inset-x-0 top-0 z-40 h-16 overflow-hidden bg-transparent min-[700px]:-top-[3px]">
+    <header className="topbar-header fixed inset-x-0 top-0 z-40 h-16 overflow-hidden bg-transparent min-[700px]:-top-[5px]">
       <div className="relative hidden h-full min-[700px]:block">
         <Link
           href="/intro"
           className={`absolute touch-manipulation font-bold uppercase ${textColorClass}`}
-          style={{ left: px(35), top: px(25), fontSize: px(11) }}
+          style={{ left: px(35), top: px(25), fontSize: fontgrow(11) }}
         >
           Wang eun ji
         </Link>
         {DESKTOP_NAV.map((item) => (
           <Link
             key={item.href}
-            href={item.label === "home" ? homeHref : item.href}
-            className={`absolute touch-manipulation lowercase ${textColorClass}`}
-            style={{ left: px(item.left), top: px(25), fontSize: px(10) }}
+            href={item.href === "/main/parts" ? homeHref : item.href}
+            className={`absolute touch-manipulation ${textColorClass}`}
+            style={{ left: px(item.left), top: px(25), fontSize: fontgrow(10) }}
           >
             {item.label}
           </Link>
         ))}
         <a
           href={`mailto:${CONTACT_EMAIL}`}
-          className={`absolute lowercase ${textColorClass}`}
-          style={{ left: px(343.90234375), top: px(25), fontSize: px(10) }}
+          className={`absolute ${textColorClass}`}
+          style={{ left: px(343.90234375), top: px(25), fontSize: fontgrow(10) }}
         >
-          contact
+          Contact
         </a>
       </div>
 
@@ -120,7 +134,7 @@ export default function TopBar() {
           {MOBILE_NAV.map((item) => (
             <Link
               key={item.href}
-              href={item.label === "home" ? homeHref : item.href}
+              href={item.href === "/main/parts" ? homeHref : item.href}
               // touch-manipulation: reported broken specifically for "home"
               // while already on /intro on a real phone (worked fine via
               // mouse-click emulation in testing, so this is a best-effort
@@ -129,7 +143,7 @@ export default function TopBar() {
               // container, the same kind of nesting already documented (see
               // intro/page.tsx) to have unreliable native touch dispatch on
               // iOS WKWebView.
-              className={`absolute touch-manipulation lowercase ${textColorClass}`}
+              className={`absolute touch-manipulation ${textColorClass}`}
               style={{ left: px(item.left), top: px(25), fontSize: px(13.5) }}
             >
               {item.label}
@@ -137,10 +151,10 @@ export default function TopBar() {
           ))}
           <a
             href={`mailto:${CONTACT_EMAIL}`}
-            className={`absolute lowercase ${textColorClass}`}
+            className={`absolute ${textColorClass}`}
             style={{ left: px(373), top: px(25), fontSize: px(13.5) }}
           >
-            contact
+            Contact
           </a>
         </div>
       </div>

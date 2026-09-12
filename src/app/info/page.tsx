@@ -1,7 +1,7 @@
 import Image from "next/image";
 import localFont from "next/font/local";
 import type { ReactNode } from "react";
-import { px } from "@/lib/figma-layout";
+import { fontgrow, growWith, px } from "@/lib/figma-layout";
 
 // Figma "info" frame (get_metadata nodeId 16:2 / 48:105): width=1920,
 // height=1731. Below the site-wide mobile toggle width (700px, see
@@ -190,7 +190,7 @@ function ExhibitionList({ fontSize }: { fontSize: number }) {
   return (
     <>
       {EXHIBITION_ENTRIES.map((entry, index) => (
-        <p key={index} style={{ fontSize: px(fontSize) }} className="leading-[2]">
+        <p key={index} style={{ fontSize: fontgrow(fontSize) }} className="leading-[2]">
           {entry.year}
           {"  "}
           {entry.href ? (
@@ -213,7 +213,7 @@ function ExhibitionList({ fontSize }: { fontSize: number }) {
 
 function ContactBlock({ fontSize }: { fontSize: number }) {
   return (
-    <div className="lowercase leading-[1.5]" style={{ fontSize: px(fontSize) }}>
+    <div className="lowercase leading-[1.5]" style={{ fontSize: fontgrow(fontSize) }}>
       <p>+82 01091395405</p>
       <p>eunji.wang.0@gmail.com</p>
       <a
@@ -228,7 +228,7 @@ function ContactBlock({ fontSize }: { fontSize: number }) {
   );
 }
 
-const SECTION_LABEL_TEXT_CLASS = "text-[10px] font-normal capitalize text-[#656565]";
+const SECTION_LABEL_TEXT_CLASS = "font-normal capitalize text-[#656565]";
 
 // One section's label + content, side by side as ONE flex row so they
 // share the exact same top edge (`items-start`) no matter how tall the
@@ -252,8 +252,10 @@ function IntroSectionRow({
 }) {
   return (
     <div className="flex items-start" style={marginTop ? { marginTop } : undefined}>
-      <div style={{ width: px(INTRO_LABEL_COL_W), flexShrink: 0 }}>
-        <h2 className={SECTION_LABEL_TEXT_CLASS}>{label}</h2>
+      <div style={{ width: growWith(10, INTRO_LABEL_COL_W), flexShrink: 0 }}>
+        <h2 className={SECTION_LABEL_TEXT_CLASS} style={{ fontSize: fontgrow(10) }}>
+          {label}
+        </h2>
       </div>
       <div style={{ width: gap, flexShrink: 0 }} />
       <div style={{ flexShrink: 0 }}>{children}</div>
@@ -265,7 +267,10 @@ function IntroColumns({ gap }: { gap: string }) {
   return (
     <div>
       <IntroSectionRow label="introduction" gap={gap}>
-        <div className="text-[11px] leading-[1.75]" style={{ width: px(INTRO_ENGLISH_PARA_W) }}>
+        <div
+          className="leading-[1.75]"
+          style={{ fontSize: fontgrow(11), width: growWith(11, INTRO_ENGLISH_PARA_W) }}
+        >
           <p>
             Furniture serves a clear purpose as a tool that supports everyday life,
             <br />
@@ -277,7 +282,7 @@ function IntroColumns({ gap }: { gap: string }) {
             <br />
             through the user’s everyday life.
           </p>
-          <p style={{ marginTop: px(7) }}>
+          <p style={{ marginTop: growWith(11, 7) }}>
             This leads to the concept of Hypothesis Furniture, in which the maker and
             <br />
             the user share the agency to determine how the furniture is used, and its
@@ -292,8 +297,12 @@ function IntroColumns({ gap }: { gap: string }) {
           </p>
         </div>
         <div
-          className={`${pretendard.className} text-[11px] leading-[1.8]`}
-          style={{ width: px(INTRO_KOREAN_PARA_W), marginTop: px(38) }}
+          className={`${pretendard.className} leading-[1.8]`}
+          style={{
+            fontSize: fontgrow(11),
+            width: growWith(11, INTRO_KOREAN_PARA_W),
+            marginTop: growWith(11, 38),
+          }}
         >
           <p>
             가구는 인간의 생활을 보조하는 도구라는 점에서 명확한 목적성을 담보하고 있으면서도,
@@ -304,7 +313,7 @@ function IntroColumns({ gap }: { gap: string }) {
             <br />
             이의 생활 속에서 끊임없이 갱신된다.
           </p>
-          <p style={{ marginTop: px(7) }}>
+          <p style={{ marginTop: growWith(11, 7) }}>
             이는 가구를 만드는 이와 쓰는 이가 공동의 결정 권한을 가진 채, 일상에서 쓰임을 통해
             <br />
             가구의 존재가 증명되는 가설 가구 (Hypothesis Furniture) 의 개념으로 이어진다.
@@ -316,12 +325,12 @@ function IntroColumns({ gap }: { gap: string }) {
         </div>
       </IntroSectionRow>
       <IntroSectionRow label="Exhibition" gap={gap} marginTop={px(133)}>
-        <div style={{ width: px(INTRO_EXHIBITION_W) }}>
+        <div style={{ width: growWith(11, INTRO_EXHIBITION_W) }}>
           <ExhibitionList fontSize={11} />
         </div>
       </IntroSectionRow>
       <IntroSectionRow label="contact" gap={gap} marginTop={px(57)}>
-        <div style={{ width: px(INTRO_CONTACT_W) }}>
+        <div style={{ width: growWith(11, INTRO_CONTACT_W) }}>
           <ContactBlock fontSize={11} />
         </div>
       </IntroSectionRow>
@@ -343,7 +352,7 @@ function IntroRowLayout() {
   return (
     <div className="hidden min-[1097px]:flex min-[1097px]:items-start" style={{ marginTop: px(208) }}>
       <div
-        className="relative shrink-0"
+        className="info-image-grow relative shrink-0"
         style={{
           width: introImageWidthCss,
           aspectRatio: `${INTRO_IMAGE_NATIVE_W} / ${INTRO_IMAGE_NATIVE_H}`,
@@ -351,7 +360,7 @@ function IntroRowLayout() {
       >
         <Image src="/info/cv.png" alt="" fill className="object-cover" priority />
       </div>
-      <div style={{ width: introImageLabelGapCss, flexShrink: 0 }} />
+      <div className="info-image-gap-grow" style={{ width: introImageLabelGapCss, flexShrink: 0 }} />
       <div style={{ marginTop: px(13) }}>
         <IntroColumns gap={introGapCss} />
       </div>

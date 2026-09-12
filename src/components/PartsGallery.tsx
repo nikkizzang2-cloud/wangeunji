@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Crimson_Text, EB_Garamond } from "next/font/google";
 import { useState } from "react";
 import { partsGallery, PARTS_RECTANGLE_NUMBERS, type GalleryItem } from "@/data/works";
-import { px } from "@/lib/figma-layout";
+import { fontgrow, growWith, px } from "@/lib/figma-layout";
 import { useHasHover } from "@/lib/useHasHover";
 import MainSideNav from "./MainSideNav";
 
@@ -49,6 +49,16 @@ const GRID_RESERVED_WIDTH = LEFT_MARGIN + NAV_RESERVED_WIDTH;
 // 138->135) so the topbar-statement-grid gaps stay exactly as before; the
 // mobile branch below is untouched since that request was desktop-only.
 const GRID_ANCHOR_TOP = 174;
+// A further explicit follow-up tightens ONLY the statement-text-to-grid
+// gap by another 3px, past 1800px viewport width — via a CSS variable
+// (globals.css) rather than a second JS constant, since (unlike the
+// desktop-only shift above) this one needs to vary live with viewport
+// width rather than switch once between two fixed layouts. Use this
+// wherever GRID_ANCHOR_TOP appears in a `top`/`calc()` string below;
+// PAGE_BOTTOM_PADDING's own math further down deliberately keeps using the
+// plain JS constant — it's Figma's literal "scale 1" leftover margin,
+// unrelated to this later, purely-visual 1800px tweak.
+const GRID_ANCHOR_TOP_CSS = `calc(${px(GRID_ANCHOR_TOP)} + var(--grid-anchor-adjust-1800))`;
 
 // Native (unscaled) grid content size, measured edge-to-edge across the 53
 // tiles below (min x=35 treated as local 0 via LEFT_MARGIN, min y=185 via
@@ -56,6 +66,16 @@ const GRID_ANCHOR_TOP = 174;
 // `.figma-collision-scale` compares against the leftover viewport width.
 const GRID_NATIVE_WIDTH = 1004.9998168945312;
 const GRID_NATIVE_HEIGHT = 4907.869171142578;
+
+// Explicit request: past 1700px viewport width the grid should ALSO grow
+// past its native size (not just hold flat, the general "fixed size, only
+// margin grows" rule elsewhere on this page) — scaling up from 1x to
+// GRID_GROWN_WIDTH/GRID_NATIVE_WIDTH between 1700 and 1920px, then holding
+// at that larger size above 1920px. Left margin, statement text, and the
+// nav menu are untouched — see `.figma-collision-scale`'s own comment
+// (globals.css) for how this is summed with the existing shrink term.
+const GRID_GROWN_WIDTH = 1225;
+const GRID_GROW_MAX = GRID_GROWN_WIDTH / GRID_NATIVE_WIDTH - 1;
 
 // x/y/width/height for each of the 53 tiles (node ids 117:7-117:59), read
 // directly off get_metadata and rebased to the grid's own local origin
@@ -175,6 +195,13 @@ const STATEMENT_LINE_2 =
 // is now 2px (was 4px/`mt-1`). Margin from the tile edge is now 10px left
 // (and, symmetrically, right, for wrap) for both variants, but bottom
 // differs: 12px when a type+size line follows, 13px for name-only.
+//
+// Deliberately NOT wired into the site-wide `fontgrow`/`growWith` past-1800px
+// font growth (see figma-layout.ts): this whole tree sits inside the grid's
+// own `zoom: var(--fcol-scale)` container (see DesktopPartsGallery below),
+// which already grows everything inside it — text included, since `zoom`
+// scales layout, not just paint — as part of the EARLIER past-1700px grid
+// growth request. Adding `fontgrow` on top would double-scale it.
 function HoverInfo({ item }: { item: GalleryItem }) {
   if (!item.partsInfo) return null;
   return (
@@ -255,6 +282,7 @@ function DesktopPartsGallery() {
       style={{
         ["--fcol-reserved" as string]: px(GRID_RESERVED_WIDTH),
         ["--fcol-width" as string]: px(GRID_NATIVE_WIDTH),
+        ["--fcol-grow-max" as string]: GRID_GROW_MAX,
       }}
     >
       {/* Establishes the page's actual (scale-dependent) content height for
@@ -271,13 +299,22 @@ function DesktopPartsGallery() {
       <div
         className="relative"
         style={{
-          minHeight: `calc(${px(GRID_ANCHOR_TOP)} + ${px(GRID_NATIVE_HEIGHT)} * var(--fcol-scale) + ${px(FOOTER_GAP)} + ${px(FOOTER_GROUP_HEIGHT)} + ${px(PAGE_BOTTOM_PADDING)})`,
+          minHeight: `calc(${GRID_ANCHOR_TOP_CSS} + ${px(GRID_NATIVE_HEIGHT)} * var(--fcol-scale) + ${px(FOOTER_GAP)} + ${px(FOOTER_GROUP_HEIGHT)} + ${px(PAGE_BOTTOM_PADDING)})`,
         }}
       >
-        {/* Statement text: literally fixed, left margin never shrinks. */}
+        {/* Statement text: literally fixed, left margin never shrinks. Font
+            size + box width both grow past 1800px viewport width (site-wide
+            font-grow request — see `fontgrow`'s own comment,
+            figma-layout.ts); the left anchor stays fixed, so the box
+            widens to the right. */}
         <div
-          className="absolute text-[10px] text-[#696969] capitalize leading-[1.4]"
-          style={{ left: px(LEFT_MARGIN), top: px(135), width: px(727) }}
+          className="absolute text-[#696969] capitalize leading-[1.4]"
+          style={{
+            left: px(LEFT_MARGIN),
+            top: px(135),
+            width: growWith(10, 727),
+            fontSize: fontgrow(10),
+          }}
         >
           <p>{STATEMENT_LINE_1}</p>
           <p>{STATEMENT_LINE_2}</p>
@@ -300,7 +337,7 @@ function DesktopPartsGallery() {
           because of it. `zoom` affects layout, not just paint (same reason
           globals.css's `.figma-zoom-content` uses it instead of transform),
           so the box's reserved space actually shrinks with it. */}
-      <div className="absolute" style={{ left: px(LEFT_MARGIN), top: px(GRID_ANCHOR_TOP) }}>
+      <div className="absolute" style={{ left: px(LEFT_MARGIN), top: GRID_ANCHOR_TOP_CSS }}>
         <div
           className="relative"
           style={{
@@ -382,15 +419,20 @@ function DesktopPartsGallery() {
         style={{
           left: "50vw",
           width: px(FOOTER_GROUP_WIDTH),
-          top: `calc(${px(GRID_ANCHOR_TOP)} + ${px(GRID_NATIVE_HEIGHT)} * var(--fcol-scale) + ${px(FOOTER_GAP)})`,
+          top: `calc(${GRID_ANCHOR_TOP_CSS} + ${px(GRID_NATIVE_HEIGHT)} * var(--fcol-scale) + ${px(FOOTER_GAP)})`,
         }}
       >
         <div className="relative" style={{ width: px(FOOTER_LOGO.w), height: px(FOOTER_LOGO.h) }}>
           <Image src="/main/logo.png" alt="" fill className="object-contain" />
         </div>
         <p
-          className="absolute whitespace-nowrap text-[8px] text-[#818181]"
-          style={{ left: px(FOOTER_TEXT.x), top: px(FOOTER_TEXT.y), width: px(FOOTER_TEXT.w) }}
+          className="absolute whitespace-nowrap text-[#818181]"
+          style={{
+            left: px(FOOTER_TEXT.x),
+            top: px(FOOTER_TEXT.y),
+            width: px(FOOTER_TEXT.w),
+            fontSize: fontgrow(8),
+          }}
         >
           Eunji Wang©
         </p>

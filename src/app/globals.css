@@ -22,6 +22,67 @@
   color-scheme: light;
   --background: #f8f8f8;
   --foreground: #171717;
+
+  /* See `fontgrow`/`growWith` (figma-layout.ts) for the full explanation:
+     explicit request for every font size site-wide to jump +1.5pt past
+     1800px viewport width, with each base size's own gaps/box-widths
+     scaling by that SAME size's own ratio. One variable per base size in
+     scope so far — add more `--fontgrow-N` pairs here (both here and in
+     the media query below) as more base sizes are brought into scope on
+     other pages, rather than inventing a new mechanism per page. */
+  --fontgrow-8: 1;
+  --fontgrow-10: 1;
+  --fontgrow-11: 1;
+  --fontgrow-13: 1;
+  --fontgrow-15: 1;
+}
+
+@media (min-width: 1800px) {
+  :root {
+    --fontgrow-8: calc(9.5 / 8); /* 8pt -> 9.5pt, ~1.1875x */
+    --fontgrow-10: 1.15; /* 10pt -> 11.5pt */
+    --fontgrow-11: calc(12.5 / 11); /* 11pt -> 12.5pt, ~1.13636x */
+    --fontgrow-13: calc(14.5 / 13); /* 13pt -> 14.5pt, ~1.11538x */
+    --fontgrow-15: 1.1; /* 15pt -> 16.5pt */
+  }
+}
+
+/* Explicit follow-up request, past 1800px viewport width only:
+   - TopBar's own top offset moves back down 2px, from -5px (see
+     TopBar.tsx's own comment for that value's history) to -3px — a
+     separate, later adjustment layered on top of the earlier ones, not a
+     replacement of them (below 1800px the -5px still applies as-is).
+     `!important` wins over the Tailwind `-top-[5px]` utility this class
+     sits alongside, the same technique (and reason) as `.info-image-grow`
+     above.
+   - PartsGallery.tsx/FurnitureGallery.tsx's GRID_ANCHOR_TOP shifts via
+     `--grid-anchor-adjust-1800` so the statement-text-to-grid gap becomes
+     EXACTLY 18px past 1800px (an explicit follow-up superseding an
+     earlier, shorter-lived "-3px" version of this same variable) —
+     everything else the grid anchors (left margin, nav menu, footer offset
+     formula, which already reads GRID_ANCHOR_TOP) moves with it as one
+     unit, same reasoning as GRID_ANCHOR_TOP's own prior shifts. Both pages
+     share one GRID_ANCHOR_TOP value now (174, see FurnitureGallery.tsx's
+     own comment) and the identical statement text/font, so one shared
+     adjustment value correctly gives both an 18px gap:
+       target grid top = 135 (text top) + 32.2 (2 lines at the grown
+         11.5px font * leading-1.4) + 18 (the requested gap) = 185.2
+       --grid-anchor-adjust-1800 = 185.2 - 174 (GRID_ANCHOR_TOP) = 11.2
+     This one stays a plain CSS variable (rather than a `!important` class)
+     since GRID_ANCHOR_TOP already flows through `calc()` in three
+     different places (the grid's own `top`, the scroll container's
+     `minHeight`, and the footer's `top`) — adding it there is one
+     `+ var(...)` per formula, not a fight over which declaration wins. */
+:root {
+  --grid-anchor-adjust-1800: 0px;
+}
+@media (min-width: 1800px) {
+  :root {
+    --grid-anchor-adjust-1800: 11.2px;
+  }
+  .topbar-header {
+    top: -3px !important;
+  }
 }
 
 @theme inline {
@@ -256,9 +317,73 @@ body {
  *       </div>
  *     </div>
  *   </div>
+ *
+ * `--fcol-grow-max` (optional, defaults to 0 — no effect on any caller that
+ * doesn't set it): explicit request for PartsGallery/FurnitureGallery's grid
+ * to ALSO grow past its native size on very wide screens — between 1700px
+ * and 1920px, the grid scales up from 1x to `1 + var(--fcol-grow-max)`
+ * (e.g. 0.2189 for parts' 1005->1225px, 0.1508 for furniture's
+ * 1147->1320px), then holds at that larger size above 1920px. This is a
+ * separate concern from the shrink term above (that one only ever pulls the
+ * scale DOWN below 1, bottoming out at the collision point; this one only
+ * ever pushes it UP above 1, starting well past that point), so the two are
+ * simply summed — the shrink term is flat at exactly 1 across the entire
+ * 1700-1920 range (nothing narrower than that triggers a collision), so it
+ * contributes nothing there and the grow term alone determines the result;
+ * outside 1700-1920 the grow term is clamped to exactly 0 or exactly
+ * `--fcol-grow-max`, leaving the shrink term's own value untouched.
  */
 .figma-collision-scale {
   container-type: inline-size;
   width: 100%;
-  --fcol-scale: min(1, calc((100cqw - var(--fcol-reserved)) / var(--fcol-width)));
+  --fcol-scale: calc(
+    min(1, calc((100cqw - var(--fcol-reserved)) / var(--fcol-width))) +
+      clamp(0, calc((100cqw - 1700px) / 220px * var(--fcol-grow-max, 0)), var(--fcol-grow-max, 0))
+  );
+}
+
+/*
+ * Explicit request: /intro's desktop lock (see intro/page.tsx's
+ * DESKTOP_LOCK_BOX) stays completely fixed-size below 1700px viewport width
+ * (per the earlier "size never changes as the screen shrinks" rule), then
+ * jumps immediately — not gradually — to a proportionally larger fixed size
+ * at 1700px and above. A hard jump at one breakpoint is a real `@media`
+ * step, not a `clamp()`/`calc()` growth curve like `.figma-collision-scale`
+ * above, so it's its own tiny rule rather than a variant of that mechanism.
+ * `transform-origin` defaults to center, which is what's wanted here: the
+ * lock box is already centered by its parent's `flex items-center
+ * justify-center`, so scaling from its own center keeps it centered as it
+ * grows instead of drifting toward its unscaled top-left corner.
+ */
+@media (min-width: 1700px) {
+  .intro-lock-grow {
+    transform: scale(calc(280 / 260.0003662109375));
+  }
+}
+
+/*
+ * Explicit request: /info's desktop row layout (IntroRowLayout, viewport
+ * >=1097px — see info/page.tsx) also jumps immediately at 1700px viewport
+ * width — the CV image widens from its native 592.92px to a fixed 680px,
+ * and the image<->label gap widens from its native 93.70px to a fixed
+ * 200px — then holds at those larger fixed sizes above 1700px, same
+ * "hard step, not a gradual curve" reasoning as `.intro-lock-grow` above.
+ * Nothing else in the row (label column, label<->content gap, content
+ * column widths) changes size at all, so the row's own total width simply
+ * grows by (680-592.92)+(200-93.70) and, since the row is left-anchored,
+ * that same amount is subtracted from what would otherwise become right
+ * margin — no separate "grow the right margin" rule needed, it fell out of
+ * the layout automatically before this change and still does after it.
+ * `!important` is needed to win over the inline `style` (introImageWidthCss/
+ * introImageLabelGapCss) these classes sit alongside — an ordinary
+ * stylesheet rule can't out-specificity an inline style, but `!important`
+ * can (and is the standard, intended way to do exactly this).
+ */
+@media (min-width: 1700px) {
+  .info-image-grow {
+    width: 680px !important;
+  }
+  .info-image-gap-grow {
+    width: 200px !important;
+  }
 }

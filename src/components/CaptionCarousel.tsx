@@ -6,7 +6,7 @@ import { useState } from "react";
 import type { CaptionWork } from "@/data/works";
 import { CAPTION_MEDIA, type CaptionMediaItem } from "@/data/captionMedia";
 import { splitDimensionUnits } from "@/data/partsInfo";
-import { px } from "@/lib/figma-layout";
+import { fontgrow, growWith, px } from "@/lib/figma-layout";
 
 // Figma "caption" pages — 5 reference frames across 5 responsive stages
 // (get_design_context/get_metadata nodeId 72:1167 "caption" / 126:464 /
@@ -192,7 +192,7 @@ function CaptionLines({ lines }: { lines: string[] }) {
         if (line === "") return null;
         const gapBefore = index > 0 && lines[index - 1] === "";
         return (
-          <p key={index} style={gapBefore ? { marginTop: px(CAPTION_PARAGRAPH_GAP) } : undefined}>
+          <p key={index} style={gapBefore ? { marginTop: growWith(11, CAPTION_PARAGRAPH_GAP) } : undefined}>
             {line}
           </p>
         );
@@ -219,10 +219,13 @@ function InfoAndCaption({ work }: { work: CaptionWork }) {
   return (
     <div
       className="flex flex-col text-left text-black capitalize"
-      style={{ fontSize: px(INFO_ROW_FONT_SIZE) }}
+      style={{ fontSize: fontgrow(INFO_ROW_FONT_SIZE) }}
     >
-      <div className="flex leading-[1.6]" style={{ marginBottom: px(PARTS_ROW_GAP) }}>
-        <div className="shrink-0 whitespace-nowrap" style={{ width: px(INFO_LABEL_WIDTH) }}>
+      <div className="flex leading-[1.6]" style={{ marginBottom: growWith(INFO_ROW_FONT_SIZE, PARTS_ROW_GAP) }}>
+        <div
+          className="shrink-0 whitespace-nowrap"
+          style={{ width: growWith(INFO_ROW_FONT_SIZE, INFO_LABEL_WIDTH) }}
+        >
           <p>Parts</p>
           <p>type</p>
           <p>size</p>
@@ -236,8 +239,11 @@ function InfoAndCaption({ work }: { work: CaptionWork }) {
         </div>
       </div>
 
-      <div className="flex leading-[1.5]" style={{ marginBottom: px(FOR_ROW_GAP) }}>
-        <div className="shrink-0 whitespace-nowrap" style={{ width: px(INFO_LABEL_WIDTH) }}>
+      <div className="flex leading-[1.5]" style={{ marginBottom: growWith(INFO_ROW_FONT_SIZE, FOR_ROW_GAP) }}>
+        <div
+          className="shrink-0 whitespace-nowrap"
+          style={{ width: growWith(INFO_ROW_FONT_SIZE, INFO_LABEL_WIDTH) }}
+        >
           for
         </div>
         <div>
@@ -247,18 +253,21 @@ function InfoAndCaption({ work }: { work: CaptionWork }) {
         </div>
       </div>
 
-      <div className="flex leading-[1.5]" style={{ marginBottom: px(DATE_ROW_GAP) }}>
-        <div className="shrink-0 whitespace-nowrap" style={{ width: px(INFO_LABEL_WIDTH) }}>
+      <div className="flex leading-[1.5]" style={{ marginBottom: growWith(INFO_ROW_FONT_SIZE, DATE_ROW_GAP) }}>
+        <div
+          className="shrink-0 whitespace-nowrap"
+          style={{ width: growWith(INFO_ROW_FONT_SIZE, INFO_LABEL_WIDTH) }}
+        >
           date
         </div>
         <div>{work.year ?? "TBD"}</div>
       </div>
 
-      <div style={{ fontSize: px(CAPTION_FONT_SIZE) }} className="break-keep">
+      <div style={{ fontSize: fontgrow(CAPTION_FONT_SIZE) }} className="break-keep">
         <div className={`${pretendard.className} leading-[1.7]`}>
           <CaptionLines lines={work.captionKo ?? ["TBD"]} />
         </div>
-        <div className="leading-[1.6]" style={{ marginTop: px(CAPTION_KO_EN_GAP) }}>
+        <div className="leading-[1.6]" style={{ marginTop: growWith(CAPTION_FONT_SIZE, CAPTION_KO_EN_GAP) }}>
           <CaptionLines lines={work.captionEn ?? ["TBD"]} />
         </div>
       </div>
@@ -277,7 +286,7 @@ const SUBTITLE_WIDTH_NATIVE = 173;
 const TITLE_RIGHT_CLEARANCE_FLOOR = 22; // subtitle's right edge -> right carousel's left edge, DesktopCaption only
 // `var(--cap-w)` is the SAME carousel width driving both carousels, set
 // once on DesktopCaption's own root (see its `--cap-w` style var).
-const titleSubtitleWidthCss = `min(${px(SUBTITLE_WIDTH_NATIVE)}, calc(100vw - 2 * var(--cap-w) - ${px(
+const titleSubtitleWidthCss = `min(${growWith(10, SUBTITLE_WIDTH_NATIVE)}, calc(100vw - 2 * var(--cap-w) - ${px(
   TITLE_LEFT_FLOOR + TITLE_RIGHT_CLEARANCE_FLOOR,
 )}))`;
 
@@ -292,14 +301,17 @@ function subtitleKoEnGap(work: CaptionWork): number {
 function TitleBlock({ work }: { work: CaptionWork }) {
   return (
     <>
-      <div className="break-keep" style={{ width: px(TITLE_WIDTH) }}>
+      <div className="break-keep" style={{ width: growWith(10, TITLE_WIDTH) }}>
         {(work.workTitleLines ?? [work.title]).map((line, index) => (
           <p key={index}>{line}</p>
         ))}
       </div>
-      <div className="break-keep" style={{ marginTop: px(TITLE_SUBTITLE_GAP), width: titleSubtitleWidthCss }}>
+      <div
+        className="break-keep"
+        style={{ marginTop: growWith(10, TITLE_SUBTITLE_GAP), width: titleSubtitleWidthCss }}
+      >
         <p className={`${pretendard.className} whitespace-pre-line leading-[1.4]`}>{work.workSubtitleKo ?? "TBD"}</p>
-        <p className="leading-[1.4]" style={{ marginTop: px(subtitleKoEnGap(work)) }}>
+        <p className="leading-[1.4]" style={{ marginTop: growWith(10, subtitleKoEnGap(work)) }}>
           {work.workSubtitleEn ?? "TBD"}
         </p>
       </div>
@@ -354,7 +366,7 @@ function CarouselButton({ side, work, onAdvance, isTextSlide, item }: CarouselBu
           style={{
             right: captionRightMarginCss,
             bottom: bottomGapCss,
-            width: px(INFO_WIDTH),
+            width: growWith(CAPTION_FONT_SIZE, INFO_WIDTH),
           }}
         >
           <InfoAndCaption work={work} />
@@ -437,7 +449,12 @@ function DesktopCaption({ work }: CaptionCarouselProps) {
           // staying pinned to the real viewport, even though no ancestor
           // sets transform/filter/perspective/contain (the usual causes of
           // a fixed element picking up the wrong containing block).
-          style={{ bottom: px(35), right: px(48), width: px(INFO_WIDTH), willChange: "transform" }}
+          style={{
+            bottom: px(35),
+            right: px(48),
+            width: growWith(CAPTION_FONT_SIZE, INFO_WIDTH),
+            willChange: "transform",
+          }}
         >
           <InfoAndCaption work={work} />
         </button>
@@ -480,12 +497,13 @@ function DesktopCaption({ work }: CaptionCarouselProps) {
           advanceRight();
         }}
         aria-label="Next image (both)"
-        className="fixed hidden cursor-pointer touch-manipulation flex-col text-left text-[10px] leading-[1.5] capitalize [@media(min-height:750px)]:flex"
+        className="fixed hidden cursor-pointer touch-manipulation flex-col text-left leading-[1.5] capitalize [@media(min-height:750px)]:flex"
         // will-change: same Chrome-only "scrolls with the photos instead of
         // staying pinned" fix as the info/caption box above.
         style={{
           left: `calc(var(--cap-w) + ${titleLeftMarginCss})`,
           bottom: px(35),
+          fontSize: fontgrow(10),
           willChange: "transform",
         }}
       >
@@ -526,8 +544,8 @@ function DesktopCaption({ work }: CaptionCarouselProps) {
         }}
       >
         <div
-          className="absolute flex flex-col text-left text-[10px] leading-[1.5] capitalize"
-          style={{ left: 0, bottom: bottomGapCss }}
+          className="absolute flex flex-col text-left leading-[1.5] capitalize"
+          style={{ left: 0, bottom: bottomGapCss, fontSize: fontgrow(10) }}
         >
           <TitleBlock work={work} />
         </div>
