@@ -44,7 +44,11 @@ const GRID_RESERVED_WIDTH = LEFT_MARGIN + NAV_RESERVED_WIDTH;
 // every OTHER gap below (statement-grid, grid-footer, etc.) must stay
 // exactly as Figma specified, so shifting both anchors by the same amount
 // preserves them; the page's total scroll height shrinks by exactly 8px too.
-const GRID_ANCHOR_TOP = 177;
+// A later explicit request moved the topbar itself up 3px (desktop only,
+// see TopBar.tsx) — shifted here by that same 3px (177->174, statement text
+// 138->135) so the topbar-statement-grid gaps stay exactly as before; the
+// mobile branch below is untouched since that request was desktop-only.
+const GRID_ANCHOR_TOP = 174;
 
 // Native (unscaled) grid content size, measured edge-to-edge across the 53
 // tiles below (min x=35 treated as local 0 via LEFT_MARGIN, min y=185 via
@@ -273,7 +277,7 @@ function DesktopPartsGallery() {
         {/* Statement text: literally fixed, left margin never shrinks. */}
         <div
           className="absolute text-[10px] text-[#696969] capitalize leading-[1.4]"
-          style={{ left: px(LEFT_MARGIN), top: px(138), width: px(727) }}
+          style={{ left: px(LEFT_MARGIN), top: px(135), width: px(727) }}
         >
           <p>{STATEMENT_LINE_1}</p>
           <p>{STATEMENT_LINE_2}</p>

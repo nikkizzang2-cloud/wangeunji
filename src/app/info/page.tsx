@@ -335,9 +335,13 @@ function IntroColumns({ gap }: { gap: string }) {
 // own native max above its own phase's start width, so nothing extra is
 // needed here to tell the phases apart; the row's right margin shrinking to
 // 40 needs no clamp() of its own at all — see INTRO_PHASE_B_END's comment.
+//
+// marginTop 208 (both here and IntroStackedLayout below): shifted up 3px
+// from Figma's 211 per explicit request to move the topbar up 3px, desktop
+// only (see TopBar.tsx) — MobileInfo's own top offset is untouched.
 function IntroRowLayout() {
   return (
-    <div className="hidden min-[1097px]:flex min-[1097px]:items-start" style={{ marginTop: px(211) }}>
+    <div className="hidden min-[1097px]:flex min-[1097px]:items-start" style={{ marginTop: px(208) }}>
       <div
         className="relative shrink-0"
         style={{
@@ -362,7 +366,7 @@ function IntroRowLayout() {
 // as the image's — the image stays at 0).
 function IntroStackedLayout() {
   return (
-    <div className="hidden max-[1097px]:block" style={{ marginTop: px(211) }}>
+    <div className="hidden max-[1097px]:block" style={{ marginTop: px(208) }}>
       <div
         className="relative"
         style={{

@@ -46,6 +46,14 @@ const MOBILE_NAV = [
 // page's scrollable content. Pages reserve a literal 64px (h-16/pt-16) for
 // it since that height never changes; as the user scrolls, content passes
 // underneath and shows through the transparent background.
+//
+// `min-[700px]:-top-[3px]`: explicit request to move the topbar (and every
+// page's own top-anchored content directly below it — PartsGallery.tsx/
+// FurnitureGallery.tsx's GRID_ANCHOR_TOP+statement text, info/page.tsx's
+// IntroRowLayout/IntroStackedLayout marginTop) up 3px as one unit, so the
+// gap between topbar and content stays exactly as designed while the total
+// scrollable height shrinks by 3px — desktop (>=700px) only, per explicit
+// request not to touch the mobile layout.
 export default function TopBar() {
   // Explicit user brief: the caption page's nav text is a different fixed
   // color (#b9b9b9) than everywhere else on the site — everything else
@@ -69,7 +77,7 @@ export default function TopBar() {
   const homeHref = isIntroPage ? "/intro?unlock=1" : "/main/parts";
 
   return (
-    <header className="fixed inset-x-0 top-0 z-40 h-16 overflow-hidden bg-transparent">
+    <header className="fixed inset-x-0 top-0 z-40 h-16 overflow-hidden bg-transparent min-[700px]:-top-[3px]">
       <div className="relative hidden h-full min-[700px]:block">
         <Link
           href="/intro"

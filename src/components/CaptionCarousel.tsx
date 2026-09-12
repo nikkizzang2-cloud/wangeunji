@@ -298,7 +298,7 @@ function TitleBlock({ work }: { work: CaptionWork }) {
         ))}
       </div>
       <div className="break-keep" style={{ marginTop: px(TITLE_SUBTITLE_GAP), width: titleSubtitleWidthCss }}>
-        <p className={`${pretendard.className} leading-[1.4]`}>{work.workSubtitleKo ?? "TBD"}</p>
+        <p className={`${pretendard.className} whitespace-pre-line leading-[1.4]`}>{work.workSubtitleKo ?? "TBD"}</p>
         <p className="leading-[1.4]" style={{ marginTop: px(subtitleKoEnGap(work)) }}>
           {work.workSubtitleEn ?? "TBD"}
         </p>
@@ -616,7 +616,7 @@ function MidCaption({ work, orderedMedia, index, advance }: CompactStageProps) {
             ))}
           </div>
           <div style={{ marginTop: px(MID_TITLE_SUBTITLE_GAP), width: px(SUBTITLE_WIDTH_NATIVE) }}>
-            <p className={`${pretendard.className} leading-[1.4]`}>{work.workSubtitleKo ?? "TBD"}</p>
+            <p className={`${pretendard.className} whitespace-pre-line leading-[1.4]`}>{work.workSubtitleKo ?? "TBD"}</p>
             <p className="leading-[1.4]" style={{ marginTop: px(subtitleKoEnGap(work)) }}>
               {work.workSubtitleEn ?? "TBD"}
             </p>
@@ -753,7 +753,7 @@ function MobileCaption({ work, orderedMedia, index, advance }: CompactStageProps
             ))}
           </div>
           <div style={{ marginTop: px(MOBILE_TITLE_SUBTITLE_GAP), width: px(SUBTITLE_WIDTH_NATIVE) }}>
-            <p className={`${pretendard.className} leading-[1.4]`}>{work.workSubtitleKo ?? "TBD"}</p>
+            <p className={`${pretendard.className} whitespace-pre-line leading-[1.4]`}>{work.workSubtitleKo ?? "TBD"}</p>
             <p className="leading-[1.4]" style={{ marginTop: px(subtitleKoEnGap(work)) }}>
               {work.workSubtitleEn ?? "TBD"}
             </p>

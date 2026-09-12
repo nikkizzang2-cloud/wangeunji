@@ -13,25 +13,6 @@ import { resetNavSelection } from "@/components/MainSideNav";
 // finishes rather than cutting it off or leaving an awkward pause.
 const AUTO_UNLOCK_DURATION_MS = 450;
 
-// Session cookie (no explicit maxAge, so it's cleared when the browser tab
-// closes) — middleware.ts redirects any direct/shared-link visit to
-// /main/parts, /main/furniture, or /info back to /intro unless this cookie
-// is present, per explicit request: sharing a link to those pages should
-// always show /intro first, only actually unlocking it (here) lets you
-// through. Set right before EITHER success path navigates away — the
-// manual drag (below) and the auto-unlock triggered by clicking "home"
-// while already on /intro (IntroContent's own effect further down).
-//
-// Also resets MainSideNav's own "has the user picked parts vs furniture
-// yet" flag — explicit follow-up request: going back through /intro (drag
-// OR the "home" auto-unlock) should make both nav labels black again on
-// arrival, not keep whatever black/gray split an earlier entrance already
-// turned on.
-function markEntered() {
-  document.cookie = "entered=1; path=/";
-  resetNavSelection();
-}
-
 // Mobile (<700px, the site-wide mobile toggle width — see TopBar.tsx) uses a separate "intro
 // mobile" Figma frame (nodeId 95:2088, width=800, height=1532 — its own
 // native reference width, unrelated to the 700px toggle) — not just a
@@ -204,7 +185,12 @@ function LockComposition({
       setIsDragging(false);
       const state = dragStateRef.current;
       if (state.dragged <= -(geom.dragDistance - geom.alignThreshold)) {
-        markEntered();
+        // See middleware.ts's own comment: reaching /main/parts at all
+        // requires Next.js's router.push, which is what actually gets us
+        // past the gate there (it's the `_rsc`-marked request middleware
+        // looks for) — this call is only about MainSideNav's OWN "both
+        // labels black until picked" reset, unrelated to the gate itself.
+        resetNavSelection();
         router.push("/main/parts");
         return;
       }
@@ -366,7 +352,7 @@ function IntroContent() {
   useEffect(() => {
     if (!autoUnlock) return;
     const timer = setTimeout(() => {
-      markEntered();
+      resetNavSelection();
       router.push("/main/parts");
     }, AUTO_UNLOCK_DURATION_MS);
     return () => clearTimeout(timer);

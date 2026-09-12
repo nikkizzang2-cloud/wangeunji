@@ -18,9 +18,11 @@ const NAV_ITEMS = [
 // nav is now literally fixed-px, right-anchored by a margin that never
 // shrinks ("furniture/parts 메뉴는 margin-right 고정") — width=78,
 // right margin = 1512 - 1394 - 78 = 40px. Stacked with 0 gap (furniture
-// y=200 h=15, parts y=215 h=15). The current page is now indicated by color
-// (`#b9b9b9`, muted) instead of font-weight — neither label is bold in this
-// design (both Helvetica Regular).
+// y=200 h=15, parts y=215 h=15). Both labels are always plain black text —
+// the current page is indicated by font-weight (bold) once one has been
+// picked (see hasSelected below), not by a muted color anymore (an earlier
+// revision used `#b9b9b9` gray for the inactive label; explicit follow-up
+// request replaced that with "inactive stays regular black" instead).
 const DESKTOP_NAV_WIDTH = 78;
 const DESKTOP_NAV_RIGHT_MARGIN = 40;
 const DESKTOP_NAV_ITEMS = [
@@ -140,12 +142,8 @@ export default function MainSideNav({
               href={item.href}
               onClick={markNavSelected}
               className={`pointer-events-auto absolute text-right capitalize ${
-                whiteOverlap
-                  ? "text-white"
-                  : hasSelected && pathname !== item.href
-                    ? "text-[#b9b9b9]"
-                    : "text-black"
-              }`}
+                whiteOverlap ? "text-white" : "text-black"
+              } ${hasSelected && pathname === item.href ? "font-bold" : ""}`}
               style={{
                 right: px(DESKTOP_NAV_RIGHT_MARGIN),
                 top: px(item.y),
@@ -168,8 +166,8 @@ export default function MainSideNav({
                 key={item.href}
                 href={item.href}
                 onClick={markNavSelected}
-                className={`pointer-events-auto absolute text-right capitalize ${
-                  hasSelected && pathname !== item.href ? "text-[#b9b9b9]" : "text-black"
+                className={`pointer-events-auto absolute text-right capitalize text-black ${
+                  hasSelected && pathname === item.href ? "font-bold" : ""
                 }`}
                 style={{
                   left: px(682),

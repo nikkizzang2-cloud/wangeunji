@@ -1,20 +1,30 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Explicit request: sharing/pasting a link to any page EXCEPT /caption/[slug]
-// should always land on /intro first, never jump straight to the gated page
-// — only actually navigating there FROM WITHIN the site (through /intro's
-// lock, or between /main/parts <-> /main/furniture <-> /info once already
-// in) should work. /intro/page.tsx sets a session cookie ("entered") right
-// before it navigates away on a successful unlock (manual drag or the
-// auto-unlock triggered by clicking "home" while already on /intro) — this
-// middleware redirects to /intro whenever that cookie is missing, which is
-// true for a fresh browser session opening a bare/shared link but NOT for
-// in-app navigation (the cookie rides along on every same-origin request)
-// or a page refresh within the same session (cookie persists until the
-// browser tab/window closes, since it's set with no explicit maxAge).
+// Explicit request: opening/pasting/sharing a link to any page EXCEPT
+// /caption/[slug] should always land on /intro first, never jump straight
+// to the gated page — no exceptions, not even "I already went through
+// /intro once in this browser" (an earlier revision used a session cookie
+// for that, but the user explicitly rejected it: pasting a copied link
+// must redirect EVERY time). A later revision tried checking for the
+// `?_rsc=` query param Next.js's client router appends to *prefetch*
+// requests, on the theory that it'd also mark real navigations — it
+// doesn't: router.push's own navigation fetch (used by /intro's drag-unlock
+// and "home" auto-unlock) didn't carry it, which broke auto-unlock outright
+// (confirmed via actual network requests, not just reasoning about it).
+//
+// Referer is the reliable, framework-version-independent signal: ANY
+// request a page's own JS initiates (a <Link> click, router.push, a
+// same-origin fetch) carries that page's URL as Referer, browser-enforced,
+// not something Next.js has to opt into. A genuine top-level navigation —
+// typing/pasting a URL, clicking a link from OUTSIDE the site (KakaoTalk,
+// email, another site), or a hard refresh — has no same-origin Referer
+// (most browsers send none at all for a reload). So: Referer isn't from
+// this same site -> redirect to /intro. No cookie, no client-side code.
 export function middleware(request: NextRequest) {
-  if (!request.cookies.has("entered")) {
+  const referer = request.headers.get("referer");
+  const isFromSameSite = referer !== null && new URL(referer).origin === request.nextUrl.origin;
+  if (!isFromSameSite) {
     return NextResponse.redirect(new URL("/intro", request.url));
   }
   return NextResponse.next();

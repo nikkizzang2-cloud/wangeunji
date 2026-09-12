@@ -90,7 +90,8 @@ export const CAPTION_CONTENT: Record<string, CaptionContent> = {
     year: "2026",
     captionKo: [
       "작업일지 中",
-      "구미코의 옷장은 아홉 개의 원이 안과 밖을 넘나드는 서커스와 같길 바랐다.",
+      "구미코의 옷장은 아홉 개의 원이 안과 밖을 넘나드는",
+      "서커스와 같길 바랐다.",
       "원을 안으로 움푹 파 깊이를 만드니 구멍이 생겼다. 그 구멍 사이로 원을 통과시키니 길이를 지닌 기둥이 되었고, 툭 치니 짤뚱한 공이 나왔다. 이때 원은 옷을 보조하는 도형으로 상정했는데, 행거의 갈고리와 합이 좋았다.",
     ],
     captionEn: [
@@ -118,7 +119,7 @@ export const CAPTION_CONTENT: Record<string, CaptionContent> = {
   },
   "work-05": {
     workTitle: "Pipe Bracket, 2026",
-    workSubtitleKo: "작업복과 일상복을 함께 걸 수 있는 한 쌍의 행거.",
+    workSubtitleKo: "작업복과 일상복을 함께 걸 수 있는\n한 쌍의 행거.",
     workSubtitleEn: "A pair of hangers for both workwear and everyday clothes.",
     name: "a pipe bracket",
     type: "a hanger",
@@ -127,7 +128,8 @@ export const CAPTION_CONTENT: Record<string, CaptionContent> = {
     year: "2026",
     captionKo: [
       "작업복과 일상복을 함께 걸 수 있는 한 쌍 행거.",
-      "지금도 손으로 무언가 만들고 있을 그녀의 일상을 지지하는 가구가 되렴 - - !",
+      "지금도 손으로 무언가 만들고 있을 그녀의 일상을 지지하는",
+      "가구가 되렴 - - !",
     ],
     captionEn: [
       "A pair of clothes racks for hanging both workwear and everyday clothes.",
@@ -144,7 +146,8 @@ export const CAPTION_CONTENT: Record<string, CaptionContent> = {
     exhibition: "Eimalive Layered Works Exhibition",
     year: "2026",
     captionKo: [
-      "Eimalive 개인전 <LAYERED WORKS>를 위한 아카이빙북 기물 디자인.",
+      "Eimalive 개인전 <LAYERED WORKS>를 위한 아카이빙북",
+      "기물 디자인.",
       "작가로부터 12권의 아카이빙 북을 받았다. 한 장 한 장이 쌓여 한 권이 되고, 하나의 전시가 열리기까지의 시간들이 중첩되어 있었다. 가구는 그 시간들이 각기 독자적으로 읽히면서도, 밀도가 흩어지지 않는 구조여야 했다.",
     ],
     captionEn: [
@@ -203,6 +206,7 @@ export const CAPTION_CONTENT: Record<string, CaptionContent> = {
     year: "2025",
     captionKo: [
       "개폐되는 텍스트 캐비넷. 비치된 원고 아래에는 텍스트 삽입을 위한 틈이 있다. 틈을 통해 들어온 텍스트는 내부에 보관되었다가, 비평장이 막을 내리는 날, 캐비넷의 문이 열리며 유통된다.",
+      "",
       "작업일지 中",
       "'전시 중(보관)'과 '전시 후(유통)'라는 두 가지 쓰임이 형태에서부터 읽히도록, 두 조각이 서로를 밀고 당기며 호흡하는 삼각꼴로 디자인하였다. 두 조각을 연결하는 수직면은 구조가 완전히 갈라졌을 때, 벽에 밀착되어 공간을 확보해주는 기특한 접착면으로 작동한다.",
       "(중략)",
@@ -332,8 +336,7 @@ export const CAPTION_CONTENT: Record<string, CaptionContent> = {
     exhibition: "Papers",
     year: "2024",
     captionKo: [
-      "CT01는 원고 단위의 아카이빙 지류들이 가구를 매개로 임시 제본되어 완결된 형태로 수납되고,",
-      "창작 과정에서 늘어나는 종이 두께만큼 수납 공간의 각도를 조정할 수 있는 독특한 인터랙션을 지닌 수납형 책상이다. 이 인터랙션은 책상에서의 창작 활동을 집중시키고, 반복에서 오는 경직을 피하게 해준다.",
+      "CT01는 원고 단위의 아카이빙 지류들이 가구를 매개로 임시 제본되어 완결된 형태로 수납되고, 창작 과정에서 늘어나는 종이 두께만큼 수납 공간의 각도를 조정할 수 있는 독특한 인터랙션을 지닌 수납형 책상이다. 이 인터랙션은 책상에서의 창작 활동을 집중시키고, 반복에서 오는 경직을 피하게 해준다.",
     ],
     captionEn: [
       "CT01 is a storage desk designed to archive and temporarily bind paper materials on a per-manuscript basis, presenting them in a complete form. The storage angle can be adjusted to accommodate the increasing thickness of paper that accumulates during the creative process. This interaction helps alleviate the inertia often experienced in repetitive creative activities.",

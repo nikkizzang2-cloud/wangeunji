@@ -36,7 +36,11 @@ const GRID_RESERVED_WIDTH = LEFT_MARGIN + NAV_RESERVED_WIDTH;
 // delta) per explicit request to tighten the topbar-statement gap by 8px —
 // every OTHER gap below stays exactly as Figma specified (see
 // PartsGallery.tsx's identical change).
-const GRID_ANCHOR_TOP = 180;
+// A later explicit request moved the topbar itself up 3px (desktop only,
+// see TopBar.tsx) — shifted here by that same 3px (180->177, statement text
+// 138->135), see PartsGallery.tsx's identical change; the mobile branch
+// below is untouched since that request was desktop-only.
+const GRID_ANCHOR_TOP = 177;
 
 // Native (unscaled) grid content size — "Group 268"'s own declared
 // width/height, not the full 1512px frame width.
@@ -212,7 +216,7 @@ function DesktopFurnitureGallery({ scrollRef, f15Ref }: DesktopFurnitureGalleryP
         {/* Statement text: literally fixed, left margin never shrinks. */}
         <div
           className="absolute text-[10px] text-[#696969] capitalize leading-[1.4]"
-          style={{ left: px(LEFT_MARGIN), top: px(138), width: px(727) }}
+          style={{ left: px(LEFT_MARGIN), top: px(135), width: px(727) }}
         >
           <p>{STATEMENT_LINE_1}</p>
           <p>{STATEMENT_LINE_2}</p>

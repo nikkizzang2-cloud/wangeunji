@@ -56,6 +56,71 @@ export const PARTS_RECTANGLE_NUMBERS = [
   51, 52, 53,
 ];
 
+// Per-rectangle Instagram post for each of the 36 non-captioned parts tiles
+// (the other 17 link to /caption instead — see PARTS_CAPTION_RECTANGLE_NUMBERS
+// below) — explicit request to replace the single shared INSTAGRAM_URL
+// fallback with each tile's own real post. The user supplied a name + URL
+// list, not rectangle numbers, so this matches by PARTS_INFO's own `name`
+// field (src/data/partsInfo.ts) — exact for most (e.g. "shackle", "cleat"),
+// close-spelling for a few PARTS_INFO typos (logque/logue, magnetic
+// clasps/claps), and a handful of best-effort semantic matches where
+// PARTS_INFO's internal working name doesn't literally match the given
+// post's caption — flagged individually below; worth a quick visual
+// double-check against the user's own list if any of these seem off.
+// (Rectangle 5's PARTS_INFO name was originally "drain" and rectangle 11's
+// was "ventrgile" — both a guessed match against this list's "Grating"/"Vent
+// Grile" at the time; a later explicit request renamed PARTS_INFO itself to
+// "Grating"/"Vent Grile", so those two are exact matches now too.)
+//   - rectangle 6 "door hinge" <- "Door Stop", rectangle 40 "door hinge"
+//     <- plain "door hinge" (PARTS_INFO has two identical "door hinge"
+//     entries; the given list has one plain "door hinge" and one "Door
+//     Latch" — arbitrarily split across the two, see rectangle 52 below)
+//   - rectangle 7 "paver" <- "Paver Support"
+//   - rectangle 8 "wire clamp" <- "펜스 클립" (fence clip)
+//   - rectangle 34 "joint part" <- "pipe joint"
+//   - rectangle 41 "rack" <- "Hose Rack"
+//   - rectangle 42 "Frame rib" <- "Support Frame"
+//   - rectangle 48 "cimping sleeve" <- "슬리브" (sleeve)
+//   - rectangle 52 "Door lock" <- "Door Latch"
+export const PART_INSTAGRAM_URLS: Record<number, string> = {
+  1: "https://www.instagram.com/p/C2KnkSYPmMn/?stkn=OXF5aTZ5YmFnb2s3", // bobbin
+  3: "https://www.instagram.com/p/C5AKEfwp0b3/?stkn=ZndwemJwbXp1cHNm", // rat guard
+  4: "https://www.instagram.com/p/C-jkuIWpBtm/?stkn=MWI3NWtybXYxNDcybQ==", // bow / Bowstick
+  5: "https://www.instagram.com/p/C3ObwWOP6-n/?stkn=a3Vvb2gwOWxpYXRt", // Grating
+  6: "https://www.instagram.com/p/C4xlVyipDJp/?stkn=MTh3bW43cmZtMTAxNw==", // door hinge / Door Stop
+  7: "https://www.instagram.com/p/C4oiTK4v2MQ/?stkn=NXNvbGlucnJoaHY1", // paver / Paver Support
+  8: "https://www.instagram.com/p/C52wNcJucCh/?stkn=bjdwbmczazZlbHAw", // wire clamp / 펜스 클립
+  9: "https://www.instagram.com/p/C7ItPSLpn1Y/?stkn=Yzlxa3A3MTNpaDV0", // cleat
+  11: "https://www.instagram.com/p/C3ZxsYRrB7B/?stkn=MWZoZG5ieWQzdGt6Zw==", // Vent Grile
+  12: "https://www.instagram.com/p/C2X0nwjv_zF/?stkn=MXNlaDNiYnA2dWV5Yg==", // eye bolt / 아이볼트
+  14: "https://www.instagram.com/p/C2_7o7yLTab/?stkn=MWEwcmJhNWR6eWpqcA==", // Trussbar / 트러스바
+  15: "https://www.instagram.com/p/C6nTDTtJD9g/?stkn=NzZscXZyYTd4dnYx", // horse collar / Horse Colla
+  16: "https://www.instagram.com/p/C2wSG31rtmd/?stkn=MWRsNXA0ZzBma283cA==", // spring / 스프링
+  17: "https://www.instagram.com/p/C3ylx7dvC9f/?stkn=MTl6azRxY2FhcjlkYQ==", // U-bolt clamp / U-bolts clamp
+  18: "https://www.instagram.com/p/C35D_6kp98c/?stkn=MWtjMXQ2Y2p6endyMw==", // gargoyle
+  19: "https://www.instagram.com/p/C2Oa8rpP3Q1/?stkn=MjE4MmlhdW5uYXN2", // logque / logue
+  21: "https://www.instagram.com/p/C2e4vrtvp9V/?stkn=MjBrM21sMDh4b3kx", // buckle / 버클
+  23: "https://www.instagram.com/p/C2sJ0zBvLSZ/?stkn=MWVuY2x0bTV2Z25sbA==", // flag holder
+  24: "https://www.instagram.com/p/C3j3NwlOUGm/?stkn=b25qczJqNjV0d2lq", // end cap / 앤드캡
+  25: "https://www.instagram.com/p/C3FP1v5vnCR/?stkn=MWthZDNmMmVzeWtqdA==", // hook / 후크
+  26: "https://www.instagram.com/p/C5QlFpOpA5e/?stkn=YXd6YjBiczQyZ3U1", // winder / 와인더
+  28: "https://www.instagram.com/p/C3KoW4fv6bi/?stkn=MTcyZTE3cTJmZmFwbg==", // cable lug
+  31: "https://www.instagram.com/p/C4nRR3OJRCS/?stkn=MWx1NWVrNDk0Z2J5eg==", // Postpone / Post stone
+  34: "https://www.instagram.com/p/C2SP7K8PIkK/?stkn=MTdsOG9hMHhpOHQ0OA==", // joint part / pipe joint
+  37: "https://www.instagram.com/p/C2Y7FdRP158/?stkn=NGI3ZjdqMzN1ZTJo", // Presser feet / presser feet
+  38: "https://www.instagram.com/p/C4H59RwJENP/?stkn=NWF3bWRmOG5uaTJr", // Hose clamp / 호스밴드
+  39: "https://www.instagram.com/p/C3IV6NSvFYC/?stkn=MWQ3dnRtM3NzNTAwdA==", // Strap
+  40: "https://www.instagram.com/p/C2bxrUjLIbS/?stkn=MWkxZTN4dzdud29vOA==", // door hinge
+  41: "https://www.instagram.com/p/C3Uc-zILypN/?stkn=bTZidTZucHJpdDYz", // rack / Hose Rack
+  42: "https://www.instagram.com/p/C5H_MbbJNQZ/?stkn=ampkZXpqemJpZjE2", // Frame rib / Support Frame
+  43: "https://www.instagram.com/p/C7yiLR8JN5g/?stkn=a3YzdXppMGtodWVr", // Wheel chocks
+  45: "https://www.instagram.com/p/C2KxAOpvnHl/?stkn=MXNnbzJ2eXZseGYxMQ==", // magnetic clasps / claps
+  48: "https://www.instagram.com/p/C2RaddoLqB2/?stkn=ZnluaG9lZ2Y1MzVt", // cimping sleeve / 슬리브
+  49: "https://www.instagram.com/p/C4NJQ8fupVJ/?stkn=eXJodnAybTI1b3Yy", // Shackle
+  50: "https://www.instagram.com/p/C87XdOtvHAG/?stkn=MTF3Z2tiNXZiZHhvcA==", // Towhitch / 토우히치
+  52: "https://www.instagram.com/p/C206MrEPjJE/?stkn=cjloN2l0MWV4OHFk", // Door lock / Door Latch
+};
+
 // Maps captionWorks/hover-fN index (1-17, the same "work N" shared with
 // furnitureGallery — see CLAUDE.md "parts(17개)와 furniture(17개, 동일한
 // 작품)가 공유하는 17개") to the Figma "Rectangle N" identity in /main/parts
@@ -119,7 +184,10 @@ export const partsGallery: GalleryItem[] = Array.from({ length: PARTS_COUNT }, (
     hoverImage: captionIndex !== undefined ? `/main/furniture/hover-f${captionIndex + 1}.jpg` : null,
     title: linkedCaption ? linkedCaption.title : `Part ${String(id).padStart(2, "0")}`,
     slug: linkedCaption ? linkedCaption.slug : null,
-    instagramUrl: linkedCaption ? null : INSTAGRAM_URL,
+    // Falls back to the generic INSTAGRAM_URL only for the (currently none,
+    // but kept as a safety net) case a non-captioned rectangle has no entry
+    // in PART_INSTAGRAM_URLS.
+    instagramUrl: linkedCaption ? null : (PART_INSTAGRAM_URLS[rectangleNumber] ?? INSTAGRAM_URL),
     partsInfo: PARTS_INFO[rectangleNumber],
   };
 });
