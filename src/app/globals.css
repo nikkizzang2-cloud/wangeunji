@@ -25,11 +25,14 @@
 
   /* See `fontgrow`/`growWith` (figma-layout.ts) for the full explanation:
      explicit request for every font size site-wide to jump +1.5pt past
-     1800px viewport width, with each base size's own gaps/box-widths
-     scaling by that SAME size's own ratio. One variable per base size in
-     scope so far — add more `--fontgrow-N` pairs here (both here and in
-     the media query below) as more base sizes are brought into scope on
-     other pages, rather than inventing a new mechanism per page. */
+     1700px viewport width (moved here from an original 1800px per a later
+     explicit follow-up, to line up with the grid/lock/image growth below,
+     which all already started at 1700px), with each base size's own
+     gaps/box-widths scaling by that SAME size's own ratio. One variable
+     per base size in scope so far — add more `--fontgrow-N` pairs here
+     (both here and in the media query below) as more base sizes are
+     brought into scope on other pages, rather than inventing a new
+     mechanism per page. */
   --fontgrow-8: 1;
   --fontgrow-10: 1;
   --fontgrow-11: 1;
@@ -37,7 +40,7 @@
   --fontgrow-15: 1;
 }
 
-@media (min-width: 1800px) {
+@media (min-width: 1700px) {
   :root {
     --fontgrow-8: calc(9.5 / 8); /* 8pt -> 9.5pt, ~1.1875x */
     --fontgrow-10: 1.15; /* 10pt -> 11.5pt */
@@ -47,38 +50,42 @@
   }
 }
 
-/* Explicit follow-up request, past 1800px viewport width only:
+/* Explicit follow-up requests, past 1700px viewport width only (moved here
+   from an original 1800px alongside the font-grow breakpoint above — both
+   of these compensate for the bigger font, so they need to change at the
+   same point it does):
    - TopBar's own top offset moves back down 2px, from -5px (see
      TopBar.tsx's own comment for that value's history) to -3px — a
      separate, later adjustment layered on top of the earlier ones, not a
-     replacement of them (below 1800px the -5px still applies as-is).
+     replacement of them (below 1700px the -5px still applies as-is).
      `!important` wins over the Tailwind `-top-[5px]` utility this class
      sits alongside, the same technique (and reason) as `.info-image-grow`
      above.
    - PartsGallery.tsx/FurnitureGallery.tsx's GRID_ANCHOR_TOP shifts via
-     `--grid-anchor-adjust-1800` so the statement-text-to-grid gap becomes
-     EXACTLY 18px past 1800px (an explicit follow-up superseding an
-     earlier, shorter-lived "-3px" version of this same variable) —
-     everything else the grid anchors (left margin, nav menu, footer offset
-     formula, which already reads GRID_ANCHOR_TOP) moves with it as one
-     unit, same reasoning as GRID_ANCHOR_TOP's own prior shifts. Both pages
-     share one GRID_ANCHOR_TOP value now (174, see FurnitureGallery.tsx's
-     own comment) and the identical statement text/font, so one shared
+     `--grid-anchor-adjust-wide` so the statement-text-to-grid gap becomes
+     EXACTLY 18px past 1700px — everything else the grid anchors (left
+     margin, nav menu, footer offset formula, which already reads
+     GRID_ANCHOR_TOP) moves with it as one unit, same reasoning as
+     GRID_ANCHOR_TOP's own prior shifts. Both pages share one
+     GRID_ANCHOR_TOP value now (174, see FurnitureGallery.tsx's own
+     comment) and the identical statement text/font, so one shared
      adjustment value correctly gives both an 18px gap:
        target grid top = 135 (text top) + 32.2 (2 lines at the grown
          11.5px font * leading-1.4) + 18 (the requested gap) = 185.2
-       --grid-anchor-adjust-1800 = 185.2 - 174 (GRID_ANCHOR_TOP) = 11.2
+       --grid-anchor-adjust-wide = 185.2 - 174 (GRID_ANCHOR_TOP) = 11.2
      This one stays a plain CSS variable (rather than a `!important` class)
      since GRID_ANCHOR_TOP already flows through `calc()` in three
      different places (the grid's own `top`, the scroll container's
      `minHeight`, and the footer's `top`) — adding it there is one
-     `+ var(...)` per formula, not a fight over which declaration wins. */
+     `+ var(...)` per formula, not a fight over which declaration wins.
+     Named "-wide", not "-1700", since (as this exact rename shows) the
+     breakpoint number itself has already moved once. */
 :root {
-  --grid-anchor-adjust-1800: 0px;
+  --grid-anchor-adjust-wide: 0px;
 }
-@media (min-width: 1800px) {
+@media (min-width: 1700px) {
   :root {
-    --grid-anchor-adjust-1800: 11.2px;
+    --grid-anchor-adjust-wide: 11.2px;
   }
   .topbar-header {
     top: -3px !important;

@@ -40,14 +40,14 @@ export function px(value: number) {
 }
 
 /**
- * Site-wide explicit request: past 1800px viewport width, every font size
- * grows by +1.5pt (e.g. 10pt -> 11.5pt) — a hard jump at 1800px, not a
+ * Site-wide explicit request: past 1700px viewport width, every font size
+ * grows by +1.5pt (e.g. 10pt -> 11.5pt) — a hard jump at 1700px, not a
  * gradual `clamp()` curve, permanently in effect above that width. Because
  * +1.5pt is a different RATIO for every base size (10->11.5 is 1.15x,
  * 11->12.5 is ~1.136x), there's no single site-wide scale factor — instead
  * globals.css defines one `--fontgrow-N` custom property PER BASE SIZE in
  * scope so far (currently 10 and 11 — see its own comment), each 1 normally
- * and (N+1.5)/N above 1800px, and every caller multiplies by the variable
+ * and (N+1.5)/N above 1700px, and every caller multiplies by the variable
  * matching ITS OWN base size. `fontgrow(10)` gives the font-size itself;
  * `growWith(10, someBoxWidth)` scales anything else (a text's own wrap
  * width, or a gap INTERNAL to that same text block) by that same text's

@@ -46,9 +46,9 @@ const GRID_RESERVED_WIDTH = LEFT_MARGIN + NAV_RESERVED_WIDTH;
 // 177->174, matching PartsGallery.tsx's GRID_ANCHOR_TOP exactly.
 const GRID_ANCHOR_TOP = 174;
 // A further explicit follow-up tightens ONLY the statement-text-to-grid
-// gap by another 3px past 1800px viewport width — see PartsGallery.tsx's
+// gap by another 3px past 1700px viewport width — see PartsGallery.tsx's
 // identical `GRID_ANCHOR_TOP_CSS` for the full reasoning.
-const GRID_ANCHOR_TOP_CSS = `calc(${px(GRID_ANCHOR_TOP)} + var(--grid-anchor-adjust-1800))`;
+const GRID_ANCHOR_TOP_CSS = `calc(${px(GRID_ANCHOR_TOP)} + var(--grid-anchor-adjust-wide))`;
 
 // Native (unscaled) grid content size — "Group 268"'s own declared
 // width/height, not the full 1512px frame width.
@@ -60,7 +60,7 @@ const GRID_NATIVE_HEIGHT = 2098.456298828125;
 // GRID_NATIVE_WIDTH between 1700 and 1920px, then holding at that larger
 // size above 1920px — see PartsGallery.tsx's identical change and
 // `.figma-collision-scale`'s own comment (globals.css) for the mechanism.
-const GRID_GROWN_WIDTH = 1320;
+const GRID_GROWN_WIDTH = 1540;
 const GRID_GROW_MAX = GRID_GROWN_WIDTH / GRID_NATIVE_WIDTH - 1;
 
 // Explicit request: furniture's shrink point should line up with parts'
@@ -150,7 +150,7 @@ const STATEMENT_LINE_2 =
 // "호버시 뜨는 정보는 기존의 텍스트 박스와 동일한 형식으로" — identical
 // markup/sizes, just triggered by a different interaction.
 //
-// Deliberately NOT wired into the site-wide `fontgrow`/`growWith` past-1800px
+// Deliberately NOT wired into the site-wide `fontgrow`/`growWith` past-1700px
 // font growth (see figma-layout.ts) — see PartsGallery.tsx's identical
 // comment: this tree sits inside the grid's own `zoom: var(--fcol-scale)`
 // container, which already grows it (text included) as part of the
@@ -237,7 +237,7 @@ function DesktopFurnitureGallery({ scrollRef, f15Ref }: DesktopFurnitureGalleryP
         }}
       >
         {/* Statement text: literally fixed, left margin never shrinks. Font
-            size + box width both grow past 1800px viewport width (site-wide
+            size + box width both grow past 1700px viewport width (site-wide
             font-grow request — see `fontgrow`'s own comment,
             figma-layout.ts); the left anchor stays fixed, so the box
             widens to the right. */}
@@ -355,79 +355,95 @@ function DesktopFurnitureGallery({ scrollRef, f15Ref }: DesktopFurnitureGalleryP
   );
 }
 
-// Figma "parts.funiture mobile" (nodeId 95:2340) — the user placed every
-// tile themselves this time, so these are read directly off get_metadata
-// (not derived/computed like PartsGallery's mobile tiles). The visual order
-// isn't strictly f1->f17: f4 sits above f3. Year-label gaps are NOT a fixed
-// 15px like the tile-to-tile gaps — e.g. "2026" sits ~77px below f6 but the
-// next tile (f7) sits further below "2026" still — so every element here
-// uses its own literal Figma y rather than a computed running gap.
-const MOBILE_TILES: { item: GalleryItem; y: number }[] = [
-  { item: furnitureGallery[0], y: 217 }, // f1
-  { item: furnitureGallery[1], y: 638 }, // f2
-  { item: furnitureGallery[3], y: 1059 }, // f4
-  { item: furnitureGallery[2], y: 1241 }, // f3
-  { item: furnitureGallery[4], y: 1424 }, // f5
-  { item: furnitureGallery[5], y: 1782 }, // f6
-  { item: furnitureGallery[6], y: 2237 }, // f7
-  { item: furnitureGallery[7], y: 2425 }, // f8
-  { item: furnitureGallery[8], y: 2690 }, // f9
-  { item: furnitureGallery[9], y: 3142 }, // f10
-  { item: furnitureGallery[10], y: 3594 }, // f11
-  { item: furnitureGallery[11], y: 4000 }, // f12
-  { item: furnitureGallery[12], y: 4406 }, // f13
-  { item: furnitureGallery[13], y: 4590 }, // f14
-  { item: furnitureGallery[14], y: 4813 }, // f15
-  { item: furnitureGallery[15], y: 5175.26171875 }, // f16
-  { item: furnitureGallery[16], y: 5630.841796875 }, // f17
-];
-// [x, w, h] per tile above, in the same order — kept separate from the
-// y-position table since the widths repeat/vary independently of position.
-const MOBILE_TILE_WH: [w: number, h: number][] = [
-  [436.0921630859375, 406.1543884277344], // f1
-  [294.75732421875, 405.8952941894531], // f2
-  [217.5470733642578, 167.6509552001953], // f4
-  [217.5470733642578, 167.6509552001953], // f3
-  [375.9363098144531, 343.0781555175781], // f5
-  [389.4661560058594, 343.0781555175781], // f6
-  [212.5574951171875, 172.64056396484375], // f7
-  [212.5574951171875, 249.4806365966797], // f8
-  [295.38507080078125, 437.0900573730469], // f9
-  [621.4063110351562, 436.82061767578125], // f10
-  [433.0982666015625, 391.185546875], // f11
-  [433.0982666015625, 391.185546875], // f12
-  [217.5470733642578, 168.64889526367188], // f13
-  [217.5470733642578, 207.56787109375], // f14
-  [327.31854248046875, 249.4806365966797], // f15
-  [502.9529113769531, 343.2852478027344], // f16
-  [502.9529113769531, 343.2852478027344], // f17
-];
+// Figma "parts.funiture mobile" (nodeId 95:2340) originally had every tile
+// individually hand-placed (not derived/computed like PartsGallery.tsx's
+// mobile tiles) — a later explicit follow-up switched this to the same
+// fixed-gap auto-stacking PartsGallery.tsx's mobile grid already uses (far
+// simpler to apply a shared grid-growth request to a computed running
+// position than to 17 individually hand-placed ones). MOBILE_TILE_GAP/
+// MOBILE_FIRST_TILE_TOP below match PartsGallery.tsx's own values exactly
+// — explicit request to unify the statement-text-to-grid top margin
+// between the two pages (a user-visible inconsistency: the grids "다른
+// 비율로 들어가있다").
+//
+// The visual order isn't strictly f1->f17 (f4 sits above f3), and year
+// labels are interleaved at their own points in that order — both
+// preserved from the original hand-placed layout, just re-expressed as
+// entries in one sequence that a single running cursor stacks, rather than
+// each carrying its own literal Figma y.
+const MOBILE_TILE_GAP = 15; // tile -> tile, and tile -> label (matches PartsGallery.tsx's MOBILE_TILE_GAP)
+const MOBILE_LABEL_GAP_AFTER = 78; // label -> next tile (~77-79px in the original hand-placed data)
+const MOBILE_LABEL_FONT_SIZE = 13;
+const MOBILE_LABEL_LINE_HEIGHT = MOBILE_LABEL_FONT_SIZE * 1.625; // leading-relaxed
 
-const MOBILE_YEAR_LABELS: [year: string, y: number][] = [
-  ["2026", 2140],
-  ["2025", 5077],
-  ["2024", 5533.546875],
-  ["2021", 5989.126953125],
+// Explicit follow-up request: the mobile grid's tiles grow so the single
+// widest one (f10) lands at exactly 621px — every tile scales by this SAME
+// factor to preserve their relative proportions, gaps stay exactly 15px
+// (only each tile's own w/h scales, not the space between them). f10 is
+// already 621.41px natively, so this scale is ~0.9993 — furniture's mobile
+// grid stays essentially at its native size, unlike PartsGallery.tsx's
+// (whose own widest tile is only 491.089px natively and so grows ~1.26x to
+// reach the same 621px target) — see that file's identical comment.
+const MOBILE_WIDEST_TILE_NATIVE = 621.4063110351562; // f10
+const MOBILE_GRID_TARGET_WIDTH = 621;
+const MOBILE_GRID_SCALE = MOBILE_GRID_TARGET_WIDTH / MOBILE_WIDEST_TILE_NATIVE;
+
+type MobileEntry =
+  | { type: "tile"; item: GalleryItem; wNative: number; hNative: number }
+  | { type: "label"; year: string };
+
+const MOBILE_SEQUENCE: MobileEntry[] = [
+  { type: "tile", item: furnitureGallery[0], wNative: 436.0921630859375, hNative: 406.1543884277344 }, // f1
+  { type: "tile", item: furnitureGallery[1], wNative: 294.75732421875, hNative: 405.8952941894531 }, // f2
+  { type: "tile", item: furnitureGallery[3], wNative: 217.5470733642578, hNative: 167.6509552001953 }, // f4
+  { type: "tile", item: furnitureGallery[2], wNative: 217.5470733642578, hNative: 167.6509552001953 }, // f3
+  { type: "tile", item: furnitureGallery[4], wNative: 375.9363098144531, hNative: 343.0781555175781 }, // f5
+  { type: "tile", item: furnitureGallery[5], wNative: 389.4661560058594, hNative: 343.0781555175781 }, // f6
+  { type: "label", year: "2026" },
+  { type: "tile", item: furnitureGallery[6], wNative: 212.5574951171875, hNative: 172.64056396484375 }, // f7
+  { type: "tile", item: furnitureGallery[7], wNative: 212.5574951171875, hNative: 249.4806365966797 }, // f8
+  { type: "tile", item: furnitureGallery[8], wNative: 295.38507080078125, hNative: 437.0900573730469 }, // f9
+  { type: "tile", item: furnitureGallery[9], wNative: MOBILE_WIDEST_TILE_NATIVE, hNative: 436.82061767578125 }, // f10
+  { type: "tile", item: furnitureGallery[10], wNative: 433.0982666015625, hNative: 391.185546875 }, // f11
+  { type: "tile", item: furnitureGallery[11], wNative: 433.0982666015625, hNative: 391.185546875 }, // f12
+  { type: "tile", item: furnitureGallery[12], wNative: 217.5470733642578, hNative: 168.64889526367188 }, // f13
+  { type: "tile", item: furnitureGallery[13], wNative: 217.5470733642578, hNative: 207.56787109375 }, // f14
+  { type: "tile", item: furnitureGallery[14], wNative: 327.31854248046875, hNative: 249.4806365966797 }, // f15
+  { type: "label", year: "2025" },
+  { type: "tile", item: furnitureGallery[15], wNative: 502.9529113769531, hNative: 343.2852478027344 }, // f16
+  { type: "label", year: "2024" },
+  { type: "tile", item: furnitureGallery[16], wNative: 502.9529113769531, hNative: 343.2852478027344 }, // f17
+  { type: "label", year: "2021" },
 ];
 
 const MOBILE_TILE_X = 45;
+// Matches PartsGallery.tsx's own MOBILE_FIRST_TILE_TOP exactly — see this
+// block's own opening comment.
+const MOBILE_FIRST_TILE_TOP = 209;
 
-// Topbar-statement gap tightened by 8px, same request as PartsGallery.tsx's
-// identical change — applied uniformly to every absolute Y position below
-// (statement, each tile, each year label, the footer) rather than editing
-// each of MOBILE_TILES/MOBILE_YEAR_LABELS' individually-placed raw Figma
-// values by hand, since those aren't derived from a single shiftable anchor
-// (unlike PartsGallery's mobile tiles, which cascade from one
-// MOBILE_FIRST_TILE_TOP constant). Every OTHER gap stays exactly as placed
-// in Figma, since they're all shifted by the identical amount.
-const MOBILE_Y_SHIFT = 8;
+type MobilePlacedTile = { item: GalleryItem; x: number; y: number; w: number; h: number };
+type MobilePlacedLabel = { year: string; y: number };
 
-const MOBILE_LAST_TILE_BOTTOM = 5630.841796875 + 343.2852478027344 - MOBILE_Y_SHIFT; // f17
+const MOBILE_TILES: MobilePlacedTile[] = [];
+const MOBILE_YEAR_LABELS: MobilePlacedLabel[] = [];
+let mobileCursorY = MOBILE_FIRST_TILE_TOP;
+let mobileLastTileBottom = MOBILE_FIRST_TILE_TOP;
+for (const entry of MOBILE_SEQUENCE) {
+  if (entry.type === "label") {
+    MOBILE_YEAR_LABELS.push({ year: entry.year, y: mobileCursorY });
+    mobileCursorY += MOBILE_LABEL_LINE_HEIGHT + MOBILE_LABEL_GAP_AFTER;
+    continue;
+  }
+  const w = entry.wNative * MOBILE_GRID_SCALE;
+  const h = entry.hNative * MOBILE_GRID_SCALE;
+  MOBILE_TILES.push({ item: entry.item, x: MOBILE_TILE_X, y: mobileCursorY, w, h });
+  mobileLastTileBottom = mobileCursorY + h;
+  mobileCursorY = mobileLastTileBottom + MOBILE_TILE_GAP;
+}
+const MOBILE_LAST_TILE_BOTTOM = mobileLastTileBottom; // f17 — footer hangs off the last TILE, not the trailing "2021" label after it
 
 // Footer margin per explicit spec ("마지막 사각형과 위로 180px 아래로
-// 35px") — matches the placed footer exactly (logo top - last tile bottom
-// = 6154.126953125 - 5974.126953125 = 180; canvas bottom - copyright bottom
-// = 35).
+// 35px").
 const MOBILE_FOOTER_LOGO_Y = MOBILE_LAST_TILE_BOTTOM + 180;
 const MOBILE_FOOTER_COPYRIGHT_Y = MOBILE_FOOTER_LOGO_Y + 74;
 const MOBILE_CANVAS_WIDTH = 800;
@@ -482,8 +498,7 @@ function MobileFurnitureGallery() {
               <p>{STATEMENT_LINE_2}</p>
             </div>
 
-            {MOBILE_TILES.map(({ item, y }, index) => {
-              const [w, h] = MOBILE_TILE_WH[index];
+            {MOBILE_TILES.map(({ item, x, y, w, h }) => {
               const isActive = activeId === item.id;
 
               return (
@@ -492,8 +507,8 @@ function MobileFurnitureGallery() {
                   href={`/caption/${item.slug}`}
                   className="absolute touch-manipulation overflow-hidden bg-neutral-200"
                   style={{
-                    left: px(MOBILE_TILE_X),
-                    top: px(y - MOBILE_Y_SHIFT),
+                    left: px(x),
+                    top: px(y),
                     width: px(w),
                     height: px(h),
                   }}
@@ -517,11 +532,11 @@ function MobileFurnitureGallery() {
               );
             })}
 
-            {MOBILE_YEAR_LABELS.map(([year, y]) => (
+            {MOBILE_YEAR_LABELS.map(({ year, y }) => (
               <p
                 key={year}
                 className="absolute text-[13px] text-[#6f6f6f] capitalize leading-relaxed"
-                style={{ left: px(45), top: px(y - MOBILE_Y_SHIFT) }}
+                style={{ left: px(45), top: px(y) }}
               >
                 {year}
               </p>

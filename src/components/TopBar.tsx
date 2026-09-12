@@ -7,7 +7,7 @@ import { fontgrow, px } from "@/lib/figma-layout";
 
 // `fontgrow(N)` on desktop's font sizes below: explicit site-wide request
 // (see `fontgrow`'s own comment, figma-layout.ts) for every font to jump
-// +1.5pt past 1800px viewport width. No text-box widths here need a paired
+// +1.5pt past 1700px viewport width. No text-box widths here need a paired
 // `growWith` — the logo and nav labels are short, auto-width text with no
 // fixed wrap-width to keep in sync.
 //
@@ -65,9 +65,9 @@ const MOBILE_NAV = [
 // untouched by either request.
 //
 // `.topbar-header` (globals.css): a THIRD, later explicit follow-up moves
-// the topbar back down 2px past 1800px viewport width specifically — -5px
+// the topbar back down 2px past 1700px viewport width specifically — -5px
 // + 2px = -3px there, while staying at the full -5px between 700px and
-// 1800px.
+// 1700px.
 export default function TopBar() {
   // Explicit user brief: the caption page's nav text is a different fixed
   // color (#b9b9b9) than everywhere else on the site — everything else

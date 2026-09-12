@@ -50,15 +50,15 @@ const GRID_RESERVED_WIDTH = LEFT_MARGIN + NAV_RESERVED_WIDTH;
 // mobile branch below is untouched since that request was desktop-only.
 const GRID_ANCHOR_TOP = 174;
 // A further explicit follow-up tightens ONLY the statement-text-to-grid
-// gap by another 3px, past 1800px viewport width — via a CSS variable
+// gap by another 3px, past 1700px viewport width — via a CSS variable
 // (globals.css) rather than a second JS constant, since (unlike the
 // desktop-only shift above) this one needs to vary live with viewport
 // width rather than switch once between two fixed layouts. Use this
 // wherever GRID_ANCHOR_TOP appears in a `top`/`calc()` string below;
 // PAGE_BOTTOM_PADDING's own math further down deliberately keeps using the
 // plain JS constant — it's Figma's literal "scale 1" leftover margin,
-// unrelated to this later, purely-visual 1800px tweak.
-const GRID_ANCHOR_TOP_CSS = `calc(${px(GRID_ANCHOR_TOP)} + var(--grid-anchor-adjust-1800))`;
+// unrelated to this later, purely-visual 1700px tweak.
+const GRID_ANCHOR_TOP_CSS = `calc(${px(GRID_ANCHOR_TOP)} + var(--grid-anchor-adjust-wide))`;
 
 // Native (unscaled) grid content size, measured edge-to-edge across the 53
 // tiles below (min x=35 treated as local 0 via LEFT_MARGIN, min y=185 via
@@ -74,7 +74,7 @@ const GRID_NATIVE_HEIGHT = 4907.869171142578;
 // at that larger size above 1920px. Left margin, statement text, and the
 // nav menu are untouched — see `.figma-collision-scale`'s own comment
 // (globals.css) for how this is summed with the existing shrink term.
-const GRID_GROWN_WIDTH = 1225;
+const GRID_GROWN_WIDTH = 1350;
 const GRID_GROW_MAX = GRID_GROWN_WIDTH / GRID_NATIVE_WIDTH - 1;
 
 // x/y/width/height for each of the 53 tiles (node ids 117:7-117:59), read
@@ -196,7 +196,7 @@ const STATEMENT_LINE_2 =
 // (and, symmetrically, right, for wrap) for both variants, but bottom
 // differs: 12px when a type+size line follows, 13px for name-only.
 //
-// Deliberately NOT wired into the site-wide `fontgrow`/`growWith` past-1800px
+// Deliberately NOT wired into the site-wide `fontgrow`/`growWith` past-1700px
 // font growth (see figma-layout.ts): this whole tree sits inside the grid's
 // own `zoom: var(--fcol-scale)` container (see DesktopPartsGallery below),
 // which already grows everything inside it — text included, since `zoom`
@@ -303,7 +303,7 @@ function DesktopPartsGallery() {
         }}
       >
         {/* Statement text: literally fixed, left margin never shrinks. Font
-            size + box width both grow past 1800px viewport width (site-wide
+            size + box width both grow past 1700px viewport width (site-wide
             font-grow request — see `fontgrow`'s own comment,
             figma-layout.ts); the left anchor stays fixed, so the box
             widens to the right. */}
@@ -455,6 +455,17 @@ function DesktopPartsGallery() {
 const MOBILE_TILE_GAP = 15;
 const MOBILE_FIRST_TILE_TOP = 209; // shifted up 8px, same -8 as desktop's GRID_ANCHOR_TOP
 const MOBILE_TILE_X = 45;
+// Explicit follow-up request: the mobile grid's tiles grow so the single
+// widest one lands at exactly 621px (matching FurnitureGallery.tsx's own
+// mobile grid, whose widest tile already sits almost exactly there
+// natively — see that file's identical comment) — every tile scales by
+// this SAME factor to preserve their relative proportions, gaps stay
+// exactly 15px (only each tile's own w/h scales, not the space between
+// them). Widest native tile is 491.089px (Rectangle 31's mobile
+// placement), so scale = 621 / 491.089.
+const MOBILE_WIDEST_TILE_NATIVE = 491.089;
+const MOBILE_GRID_TARGET_WIDTH = 621;
+const MOBILE_GRID_SCALE = MOBILE_GRID_TARGET_WIDTH / MOBILE_WIDEST_TILE_NATIVE;
 
 const RECTANGLE_WH_BY_NUMBER = new Map<number, [w: number, h: number]>();
 const ITEM_BY_RECTANGLE_NUMBER = new Map<number, GalleryItem>();
@@ -472,7 +483,8 @@ for (let number = 1; number <= PARTS_RECTANGLE_NUMBERS.length; number++) {
   const wh = RECTANGLE_WH_BY_NUMBER.get(number);
   const item = ITEM_BY_RECTANGLE_NUMBER.get(number);
   if (!wh || !item) continue;
-  const [w, h] = wh;
+  const w = wh[0] * MOBILE_GRID_SCALE;
+  const h = wh[1] * MOBILE_GRID_SCALE;
   MOBILE_TILES.push({ item, x: MOBILE_TILE_X, y: mobileCursorY, w, h });
   mobileCursorY += h + MOBILE_TILE_GAP;
 }

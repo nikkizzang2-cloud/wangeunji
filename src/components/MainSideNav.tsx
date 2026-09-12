@@ -23,7 +23,7 @@ const NAV_ITEMS = [
 // picked (see hasSelected below), not by a muted color anymore (an earlier
 // revision used `#b9b9b9` gray for the inactive label; explicit follow-up
 // request replaced that with "inactive stays regular black" instead).
-// DESKTOP_NAV_WIDTH grows via `growWith(10, ...)` past 1800px viewport
+// DESKTOP_NAV_WIDTH grows via `growWith(10, ...)` past 1700px viewport
 // width (site-wide font-grow request — see `fontgrow`'s own comment,
 // figma-layout.ts) so the box still fits the bigger text; the right margin
 // stays fixed, so the (now-wider) box extends further left, toward the
@@ -32,10 +32,10 @@ const DESKTOP_NAV_WIDTH = 78;
 const DESKTOP_NAV_RIGHT_MARGIN = 40;
 // "furniture"'s own rendered line-height at 10px is 15px (h=15 above), which
 // is also the flat gap-free stack step to "parts" below it — that stops
-// being true once the font grows past 1800px (a taller line needs a taller
+// being true once the font grows past 1700px (a taller line needs a taller
 // step, or the two labels start clipping into each other), so "parts"'s own
 // top is computed FROM "furniture"'s rather than as its own flat 215
-// literal: 200 + growWith(10, 15) — 215 unchanged below 1800px, growing in
+// literal: 200 + growWith(10, 15) — 215 unchanged below 1700px, growing in
 // lockstep with the font above it so the "0 gap" stacking always holds.
 const DESKTOP_NAV_ITEM_STEP = 15;
 const DESKTOP_NAV_ITEMS = [
@@ -50,9 +50,16 @@ const DESKTOP_NAV_ITEMS = [
 // (right edge at 760, i.e. 40px from the 800px frame's own right edge)
 // instead of desktop's x=1764 — not a scaled-down copy of the desktop
 // numbers.
+// y=150/168 (originally 301/319, an 18px step kept as-is): explicit
+// follow-up request to reduce the menu's own top margin so it starts on
+// the SAME line as the statement text box in PartsGallery.tsx/
+// FurnitureGallery.tsx's mobile canvas (top: 150 there) — both this nav's
+// `.figma-fixed-scale` and that canvas's `.figma-canvas-*` share the same
+// 800px reference width and scale by the same viewport-driven factor, so
+// matching the raw native y here lines them up pixel-for-pixel on screen.
 const MOBILE_NAV_ITEMS = [
-  { label: "furniture", href: "/main/furniture", y: 301 },
-  { label: "Parts", href: "/main/parts", y: 319 },
+  { label: "furniture", href: "/main/furniture", y: 150 },
+  { label: "Parts", href: "/main/parts", y: 168 },
 ] as const;
 
 type MainSideNavProps = {
