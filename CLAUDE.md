@@ -24,7 +24,7 @@
 | 라우트 | 설명 | 페이지 수 |
 |---|---|---|
 | `/intro` | 루트 도메인 접속 시 자동 연결되는 공통 인트로 | 1 |
-| `/main` | `/main/parts`로 리다이렉트 | - |
+| `/main` | `/main/furniture`로 리다이렉트 (인트로·Home 진입 시 기본 페이지) | - |
 | `/main/parts` | parts 이미지 53개 그리드 (Figma 연동 완료) | 1 |
 | `/main/furniture` | furniture 이미지 17개 그리드 (Figma 연동 완료) | 1 |
 | `/caption/[slug]` | parts/furniture가 공유하는 개별 작품 설명 페이지 | 17 |
@@ -38,12 +38,12 @@
 
 - 상단바(TopBar)가 모든 화면에 공통으로 존재한다. `position: fixed`로 페이지 콘텐츠 위에 떠 있는 오버레이이며 배경 없음(투명) — 스크롤하면 콘텐츠가 헤더 뒤로 실제로 지나가면서 비쳐 보인다(문서 흐름에서 공간을 차지하는 sticky 방식이 아님). 각 페이지의 최상위 스크롤 컨테이너는 `h-screen` + `pt-16`으로 헤더 높이만큼 초기 여백을 확보한다. 텍스트는 Wang eun ji만 볼드 14px, 나머지(home/info/contact)는 레귤러 13px.
   - **Wang eun ji**: 클릭 시 `/intro`로 라우팅
-  - **home**: 클릭 시 `/main/parts`로 라우팅. 기존 About 팝업은 `/main` Figma 연동 시 이 버튼으로 대체되어 제거됨
+  - **home**: 클릭 시 `/main/furniture`로 라우팅. 기존 About 팝업은 `/main` Figma 연동 시 이 버튼으로 대체되어 제거됨
   - **info**: 클릭 시 `/info`로 라우팅
   - **contact**: 클릭 시 `mailto:` 링크로 메일 작성 창 실행. 수신 주소는 `src/lib/constants.ts`의 `CONTACT_EMAIL` 상수로 관리 (실제 주소로 설정 완료)
 
 ### `/intro`
-- 2개의 이미지가 배치되어 있고, 오른쪽 파츠를 왼쪽으로 드래그해 일정 거리 이동시켜 정렬되면 `/main/parts`로 이동 (드래그 인터랙션은 구현, 실제 이미지·정확한 간격/정렬 기준은 Figma 연동 시 교체 예정)
+- 2개의 이미지가 배치되어 있고, 오른쪽 파츠를 왼쪽으로 드래그해 일정 거리 이동시켜 정렬되면 `/main/furniture`로 이동 (드래그 인터랙션은 구현, 실제 이미지·정확한 간격/정렬 기준은 Figma 연동 시 교체 예정)
 - 스크롤 불가
 
 ### `/main/parts`

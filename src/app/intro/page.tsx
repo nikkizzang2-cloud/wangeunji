@@ -7,7 +7,7 @@ import { px } from "@/lib/figma-layout";
 import { resetNavSelection } from "@/components/MainSideNav";
 
 // TopBar's "home" link routes here as `/intro?unlock=1` instead of straight
-// to /main/parts (see TopBar.tsx's own comment) — this duration drives BOTH
+// to /main/furniture (see TopBar.tsx's own comment) — this duration drives BOTH
 // the CSS transition on the auto-animated lock (below) and the setTimeout
 // that navigates on afterward, so the page-change lands right as the motion
 // finishes rather than cutting it off or leaving an awkward pause.
@@ -185,13 +185,13 @@ function LockComposition({
       setIsDragging(false);
       const state = dragStateRef.current;
       if (state.dragged <= -(geom.dragDistance - geom.alignThreshold)) {
-        // See middleware.ts's own comment: reaching /main/parts at all
+        // See middleware.ts's own comment: reaching /main/furniture at all
         // requires Next.js's router.push, which is what actually gets us
         // past the gate there (it's the `_rsc`-marked request middleware
         // looks for) — this call is only about MainSideNav's OWN "both
         // labels black until picked" reset, unrelated to the gate itself.
         resetNavSelection();
-        router.push("/main/parts");
+        router.push("/main/furniture");
         return;
       }
       state.dragged = 0;
@@ -356,7 +356,7 @@ function IntroContent() {
     if (!autoUnlock) return;
     const timer = setTimeout(() => {
       resetNavSelection();
-      router.push("/main/parts");
+      router.push("/main/furniture");
     }, AUTO_UNLOCK_DURATION_MS);
     return () => clearTimeout(timer);
   }, [autoUnlock, router]);

@@ -40,11 +40,11 @@ import { fontgrow, px } from "@/lib/figma-layout";
 const MOBILE_DESIGN_WIDTH = 800;
 
 const DESKTOP_NAV = [
-  { href: "/main/parts", label: "Home", left: 187.875 },
+  { href: "/main/furniture", label: "Home", left: 187.875 },
   { href: "/info", label: "Info", left: 294.2578125 },
 ] as const;
 const MOBILE_NAV = [
-  { href: "/main/parts", label: "Home", left: 207 },
+  { href: "/main/furniture", label: "Home", left: 207 },
   { href: "/info", label: "Info", left: 321 },
 ] as const;
 
@@ -82,13 +82,13 @@ export default function TopBar() {
   // /intro itself (explicit correction — an earlier revision routed every
   // "home" click through /intro?unlock=1 regardless of the current page,
   // which is wrong: from anywhere else "home" should still jump straight to
-  // /main/parts, no detour). intro/page.tsx reads `?unlock=1` to auto-play
+  // /main/furniture, no detour). intro/page.tsx reads `?unlock=1` to auto-play
   // the drag-open motion (no user drag needed) before continuing on to
-  // /main/parts — since we're already ON /intro, this is a same-page
+  // /main/furniture — since we're already ON /intro, this is a same-page
   // client-side navigation (just the search param changes), not a real
   // page change.
   const isIntroPage = pathname === "/intro";
-  const homeHref = isIntroPage ? "/intro?unlock=1" : "/main/parts";
+  const homeHref = isIntroPage ? "/intro?unlock=1" : "/main/furniture";
 
   return (
     <header className="topbar-header fixed inset-x-0 top-0 z-40 h-16 overflow-hidden bg-transparent min-[700px]:-top-[5px]">
@@ -103,7 +103,7 @@ export default function TopBar() {
         {DESKTOP_NAV.map((item) => (
           <Link
             key={item.href}
-            href={item.href === "/main/parts" ? homeHref : item.href}
+            href={item.href === "/main/furniture" ? homeHref : item.href}
             className={`absolute touch-manipulation ${textColorClass}`}
             style={{ left: px(item.left), top: px(25), fontSize: fontgrow(10) }}
           >
@@ -134,7 +134,7 @@ export default function TopBar() {
           {MOBILE_NAV.map((item) => (
             <Link
               key={item.href}
-              href={item.href === "/main/parts" ? homeHref : item.href}
+              href={item.href === "/main/furniture" ? homeHref : item.href}
               // touch-manipulation: reported broken specifically for "home"
               // while already on /intro on a real phone (worked fine via
               // mouse-click emulation in testing, so this is a best-effort
