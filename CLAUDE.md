@@ -40,7 +40,7 @@
   - **Wang eun ji**: 클릭 시 `/intro`로 라우팅
   - **home**: 클릭 시 `/main/parts`로 라우팅. 기존 About 팝업은 `/main` Figma 연동 시 이 버튼으로 대체되어 제거됨
   - **info**: 클릭 시 `/info`로 라우팅
-  - **contact**: 클릭 시 `mailto:` 링크로 메일 작성 창 실행. 수신 주소는 `src/lib/constants.ts`의 `CONTACT_EMAIL` 상수로 관리 (현재 플레이스홀더, 확정 시 교체)
+  - **contact**: 클릭 시 `mailto:` 링크로 메일 작성 창 실행. 수신 주소는 `src/lib/constants.ts`의 `CONTACT_EMAIL` 상수로 관리 (실제 주소로 설정 완료)
 
 ### `/intro`
 - 2개의 이미지가 배치되어 있고, 오른쪽 파츠를 왼쪽으로 드래그해 일정 거리 이동시켜 정렬되면 `/main/parts`로 이동 (드래그 인터랙션은 구현, 실제 이미지·정확한 간격/정렬 기준은 Figma 연동 시 교체 예정)
@@ -50,7 +50,7 @@
 - 오른쪽 사이드에 parts / furniture 내비게이션이 있고, 클릭하면 각각 `/main/parts` / `/main/furniture`로 이동한다 (현재 페이지는 굵게 표시). 두 페이지가 이 내비게이션을 공유한다 (`src/components/MainSideNav.tsx`)
 - 53개의 불규칙한 크기 이미지를 직사각형 공간 내에 배치 (Figma 연동 완료)
 - 53개 중 17개는 `/caption/[slug]`로 연결되며, 호버 시 이미지 전환 + 텍스트 레이어 노출
-- 나머지 36개는 캡션 페이지가 없고, 호버 시 이미지가 어두워지며 텍스트 레이어 노출, 클릭 시 Instagram(`src/lib/constants.ts`의 `INSTAGRAM_URL`, 현재 플레이스홀더)으로 새 탭 이동
+- 나머지 36개는 캡션 페이지가 없고, 호버 시 이미지가 어두워지며 텍스트 레이어 노출, 클릭 시 Instagram(`src/lib/constants.ts`의 `INSTAGRAM_URL`, 실제 계정으로 설정 완료)으로 새 탭 이동
 - 세로 스크롤 가능
 - 상단에 작가 소개 문구, 하단에 로고·저작권 텍스트 포함
 
@@ -60,7 +60,7 @@
 - 각 이미지 호버 시 이미지 전환 + 텍스트 레이어 노출
 - 연도 구분 라벨(2026/2025/2024/2021) 포함
 - 상단에 작가 소개 문구, 하단에 로고·저작권 텍스트 포함 (parts와 동일)
-- 실제 사진은 아직 전달되지 않아 회색 placeholder 상태
+- 실제 사진 17장 반영 완료 (`public/main/furniture/rectangle-fN.jpg`, 호버용 `hover-fN.jpg`)
 
 ### `/caption/[slug]` (Figma 연동 완료 — `src/components/CaptionCarousel.tsx`)
 - parts(17개)와 furniture(17개, 동일한 작품)가 공유하는 17개 개별 페이지.
@@ -91,7 +91,7 @@
 - `captionWorks` (17개): 캡션 페이지의 원본 데이터(slug/title + `/caption` 텍스트 레이어용 workTitleLines/workSubtitleKo/workSubtitleEn/partsInfo/exhibition/year/captionKo/captionEn). parts와 furniture 갤러리가 이 슬러그를 공유한다.
 - `partsGallery` (53개): 앞 17개는 `captionWorks`와 1:1로 연결(`slug` 존재), 나머지 36개는 `instagramUrl`만 존재.
 - `furnitureGallery` (17개): `captionWorks` 전체와 1:1로 연결.
-- 모든 `image`/`hoverImage`는 현재 `null` 플레이스홀더 — 실제 이미지는 Figma 연동 시 채운다.
+- `image`/`hoverImage`는 실제 이미지 경로로 채워져 있다(`public/main/parts/`, `public/main/furniture/`). 파일이 전달되지 않은 칸만 `null`로 비워둔다 — 자세한 매핑 규칙은 `works.ts` 주석 참고.
 
 ## Figma 연동
 
