@@ -617,6 +617,10 @@ type CompactStageProps = {
   advance: () => void;
 };
 
+type MobileStageProps = Omit<CompactStageProps, "advance"> & {
+  step: (delta: number) => void;
+};
+
 // --- 700px < 폭 <= 1200px ("caption 1200", node 168:111 — designed against
 // an 800px lower edge, moved down to 700px like the rest of the site's
 // mobile toggle, see TopBar.tsx) ---
@@ -768,7 +772,133 @@ const MOBILE_CAPTION_KO_WIDTH = 305;
 const MOBILE_CAPTION_EN_WIDTH = 325;
 const MOBILE_CAPTION_KO_EN_GAP = CAPTION_KO_EN_GAP;
 
-function MobileCaption({ work, orderedMedia, index, advance }: CompactStageProps) {
+// Mobile-only swipe carousel (explicit request: tap-to-advance removed on
+// this stage, replaced by a finger-following horizontal swipe; Mid/Desktop
+// keep their tap behavior). `touch-action: pan-y` hands vertical drags to the
+// browser so the page still scrolls over the image; pointer events (not
+// touch events) so a mouse drag works too on a narrowed desktop window,
+// which otherwise would have no way to advance at all.
+const SWIPE_AXIS_LOCK_PX = 8; // movement before deciding horizontal vs vertical
+const SWIPE_COMMIT_RATIO = 0.18; // fraction of image width that commits a slide
+const SWIPE_TRANSITION = "transform 300ms ease-out";
+// Page-indicator dots under the image (explicit request, option "B": light
+// gray dots, current one darker gray). Sits inside the existing 30px
+// image->title gap so nothing below it moves.
+const DOT_SIZE = 6;
+const DOT_GAP = 6;
+const DOT_TOP_GAP = 12; // image bottom -> dots top
+const DOT_COLOR = "#d9d9d9";
+const DOT_ACTIVE_COLOR = "#6e6e6e";
+
+function MobileSwipeCarousel({
+  orderedMedia,
+  index,
+  step,
+}: {
+  orderedMedia: CaptionMediaItem[];
+  index: number;
+  step: (delta: number) => void;
+}) {
+  const [dragX, setDragX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const gestureRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    axis: "x" | "y" | null;
+  } | null>(null);
+  const count = orderedMedia.length;
+
+  const endGesture = (commit: boolean, width: number) => {
+    const gesture = gestureRef.current;
+    gestureRef.current = null;
+    setIsDragging(false);
+    if (commit && gesture?.axis === "x" && count > 1 && Math.abs(dragX) > width * SWIPE_COMMIT_RATIO) {
+      step(dragX < 0 ? 1 : -1);
+    }
+    setDragX(0);
+  };
+
+  return (
+    <div
+      className="relative"
+      style={{
+        marginTop: px(MOBILE_CAROUSEL_TOP),
+        width: `min(${px(MOBILE_CAROUSEL_MAX_WIDTH)}, 100%)`,
+      }}
+    >
+      <div
+        className="relative overflow-hidden bg-[#f8f8f8] select-none"
+        style={{ aspectRatio: MOBILE_CAROUSEL_ASPECT, touchAction: "pan-y" }}
+        onDragStart={(e) => e.preventDefault()}
+        onPointerDown={(e) => {
+          if (count <= 1 || (e.pointerType === "mouse" && e.button !== 0)) return;
+          gestureRef.current = { pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, axis: null };
+        }}
+        onPointerMove={(e) => {
+          const gesture = gestureRef.current;
+          if (!gesture || gesture.pointerId !== e.pointerId) return;
+          const dx = e.clientX - gesture.startX;
+          const dy = e.clientY - gesture.startY;
+          if (gesture.axis === null) {
+            if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE_AXIS_LOCK_PX) return;
+            gesture.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+            if (gesture.axis === "y") {
+              gestureRef.current = null; // vertical: leave it to page scroll
+              return;
+            }
+            e.currentTarget.setPointerCapture(e.pointerId);
+            setIsDragging(true);
+          }
+          setDragX(dx);
+        }}
+        onPointerUp={(e) => endGesture(true, e.currentTarget.clientWidth)}
+        onPointerCancel={(e) => endGesture(false, e.currentTarget.clientWidth)}
+      >
+        <div
+          className="flex size-full"
+          style={{
+            transform: `translateX(calc(${-index * 100}% + ${dragX}px))`,
+            transition: isDragging ? "none" : SWIPE_TRANSITION,
+          }}
+        >
+          {orderedMedia.map((item, i) => {
+            // Only the current slide and its neighbors mount their media —
+            // keeps off-screen videos from all autoplaying at once.
+            const distance = Math.min(Math.abs(i - index), count - Math.abs(i - index));
+            return (
+              <div key={item.src} className="relative size-full shrink-0">
+                {distance <= 1 && <MediaFrame item={item} />}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {count > 1 && (
+        <div
+          className="absolute inset-x-0 flex justify-center"
+          style={{ top: `calc(100% + ${px(DOT_TOP_GAP)})`, gap: px(DOT_GAP) }}
+          aria-hidden
+        >
+          {orderedMedia.map((item, i) => (
+            <span
+              key={item.src}
+              className="block rounded-full transition-colors duration-300"
+              style={{
+                width: px(DOT_SIZE),
+                height: px(DOT_SIZE),
+                backgroundColor: i === index ? DOT_ACTIVE_COLOR : DOT_COLOR,
+              }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MobileCaption({ work, orderedMedia, index, step }: MobileStageProps) {
   const dimensionUnits = work.partsInfo.dimensions
     ? splitDimensionUnits(work.partsInfo.dimensions)
     : [];
@@ -781,19 +911,7 @@ function MobileCaption({ work, orderedMedia, index, advance }: CompactStageProps
   return (
     <div className="block min-[700px]:hidden">
       <div className="relative pb-16">
-        <button
-          type="button"
-          onClick={advance}
-          aria-label="Next image"
-          className="relative block cursor-pointer touch-manipulation overflow-hidden bg-[#f8f8f8]"
-          style={{
-            marginTop: px(MOBILE_CAROUSEL_TOP),
-            width: `min(${px(MOBILE_CAROUSEL_MAX_WIDTH)}, 100%)`,
-            aspectRatio: MOBILE_CAROUSEL_ASPECT,
-          }}
-        >
-          {orderedMedia.length > 0 && <MediaFrame item={orderedMedia[index]} />}
-        </button>
+        <MobileSwipeCarousel orderedMedia={orderedMedia} index={index} step={step} />
 
         <div
           className="break-keep text-[10px] leading-[1.5] capitalize"
@@ -881,17 +999,20 @@ function CompactCaption({ work }: CaptionCarouselProps) {
   const orderedMedia = buildCompactMediaOrder(media);
   const [index, setIndex] = useState(0);
 
-  const advance = () => {
-    if (orderedMedia.length === 0) return;
-    setIndex((current) => (current + 1) % orderedMedia.length);
+  // Wraps both ways: swiping back from the first slide lands on the last.
+  const step = (delta: number) => {
+    const count = orderedMedia.length;
+    if (count === 0) return;
+    setIndex((current) => (current + delta + count) % count);
   };
+  const advance = () => step(1);
 
   return (
     // "1200" here must match STAGE3_END_VW by hand (Tailwind needs a
     // literal string) — see DesktopCaption's matching comment.
     <div className="hidden h-screen overflow-y-auto overflow-x-hidden bg-[#f8f8f8] max-[1200px]:block">
       <MidCaption work={work} orderedMedia={orderedMedia} index={index} advance={advance} />
-      <MobileCaption work={work} orderedMedia={orderedMedia} index={index} advance={advance} />
+      <MobileCaption work={work} orderedMedia={orderedMedia} index={index} step={step} />
     </div>
   );
 }

@@ -16,7 +16,7 @@ const nextConfig: NextConfig = {
   // whenever the Mac reconnects to Wi-Fi/gets a new DHCP lease (check via
   // `ipconfig getifaddr en0` in Terminal), so re-add the current one here
   // if phone testing over the LAN link stops working again.
-  allowedDevOrigins: ["192.168.132.88"],
+  allowedDevOrigins: ["192.168.132.88", "192.168.0.182"],
 };
 
 export default nextConfig;
